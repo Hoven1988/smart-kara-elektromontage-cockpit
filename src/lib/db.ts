@@ -1,18 +1,22 @@
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import postgres from "postgres";
 
-let client: NeonQueryFunction<false, false> | null = null;
+let client: ReturnType<typeof postgres> | null = null;
 
-function getClient(): NeonQueryFunction<false, false> {
+function getClient() {
   if (!client) {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL fehlt (siehe .env.example).");
     }
-    client = neon(process.env.DATABASE_URL);
+    client = postgres(process.env.DATABASE_URL, { ssl: "require" });
   }
   return client;
 }
 
 /** Lazy, damit Seiten ohne DB-Zugriff auch ohne DATABASE_URL bauen/laufen. */
 export function sql(strings: TemplateStringsArray, ...values: unknown[]) {
-  return getClient()(strings, ...values);
+  const client = getClient() as unknown as (
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ) => ReturnType<ReturnType<typeof postgres>>;
+  return client(strings, ...values);
 }

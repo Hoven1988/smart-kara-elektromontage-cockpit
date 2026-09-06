@@ -1,4 +1,4 @@
-import { Client } from "@neondatabase/serverless";
+import postgres from "postgres";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -13,13 +13,12 @@ async function main() {
   }
 
   const schema = readFileSync(join(__dirname, "schema.sql"), "utf8");
-  const client = new Client(databaseUrl);
-  await client.connect();
+  const sql = postgres(databaseUrl, { ssl: "require" });
   try {
-    await client.query(schema);
+    await sql.unsafe(schema);
     console.log("Schema erfolgreich angewendet.");
   } finally {
-    await client.end();
+    await sql.end();
   }
 }
 
