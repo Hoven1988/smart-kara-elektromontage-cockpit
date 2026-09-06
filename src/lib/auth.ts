@@ -83,3 +83,19 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
 export function homePathForRole(role: Role): string {
   return role === "admin" ? "/admin" : "/";
 }
+
+/** Für Server Actions: wirft, falls kein eingeloggter Admin (proxy.ts schützt Routen, nicht Actions). */
+export async function requireAdmin(): Promise<SessionPayload> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") {
+    throw new Error("Nicht autorisiert.");
+  }
+  return user;
+}
+
+/** Für Server Actions: wirft, falls niemand eingeloggt ist. */
+export async function requireUser(): Promise<SessionPayload> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Nicht autorisiert.");
+  return user;
+}
