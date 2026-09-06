@@ -3,10 +3,15 @@ import { SESSION_COOKIE, homePathForRole, verifySessionToken } from "@/lib/auth"
 
 const PUBLIC_PATHS = ["/login", "/api/login"];
 
+// TODO: entfernen, sobald echte Accounts (Neon-DB) angebunden sind (Phase 2).
+// Solange öffnet sich das Cockpit ohne Anmeldung, damit der Baufortschritt
+// ohne Login-Hürde angeschaut werden kann.
+const AUTH_DISABLED_FOR_PREVIEW = true;
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (PUBLIC_PATHS.some((p) => pathname === p)) {
+  if (AUTH_DISABLED_FOR_PREVIEW || PUBLIC_PATHS.some((p) => pathname === p)) {
     return NextResponse.next();
   }
 
