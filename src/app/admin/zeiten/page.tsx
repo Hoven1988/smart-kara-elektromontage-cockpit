@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { updateTimeEntry } from "@/actions/time";
+import { updateTimeEntry, createTimeEntry } from "@/actions/time";
 
 function toDateTimeLabel(value: unknown): string {
   if (!value) return "";
@@ -25,15 +25,21 @@ function durationLabel(start: unknown, end: unknown, breakMinutes: number): stri
 }
 
 export default async function AdminTimePage() {
-  const entries = (await sql`
-    SELECT t.id, t.started_at, t.ended_at, t.break_minutes, t.note, t.edited_by_admin,
-           u.name AS user_name, p.title AS project_title
-    FROM time_entries t
-    JOIN users u ON u.id = t.user_id
-    JOIN projects p ON p.id = t.project_id
-    ORDER BY t.started_at DESC
-    LIMIT 200
-  `) as unknown as Array<{
+  const [entries, employees, projects] = await Promise.all([
+    sql`
+      SELECT t.id, t.started_at, t.ended_at, t.break_minutes, t.note, t.edited_by_admin,
+             u.name AS user_name, p.title AS project_title
+      FROM time_entries t
+      JOIN users u ON u.id = t.user_id
+      JOIN projects p ON p.id = t.project_id
+      ORDER BY t.started_at DESC
+      LIMIT 200
+    `,
+    sql`SELECT id, name FROM users WHERE active = true ORDER BY name ASC`,
+    sql`SELECT id, title FROM projects ORDER BY title ASC`,
+  ]);
+
+  const timeEntries = entries as unknown as Array<{
     id: number;
     started_at: unknown;
     ended_at: unknown;
@@ -43,11 +49,129 @@ export default async function AdminTimePage() {
     user_name: string;
     project_title: string;
   }>;
+  const employeeList = employees as unknown as Array<{ id: number; name: string }>;
+  const projectList = projects as unknown as Array<{ id: number; title: string }>;
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
       <h1 className="mb-6 text-xl font-semibold text-silver-light">Zeiten</h1>
-      {entries.length === 0 ? (
+
+      <details className="mb-8 max-w-2xl rounded border border-border">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
+          Zeit manuell erfassen
+        </summary>
+        <form action={createTimeEntry} className="flex flex-col gap-3 border-t border-border p-4">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-sm text-silver" htmlFor="user_id">
+                Mitarbeiter
+              </label>
+              <select
+                id="user_id"
+                name="user_id"
+                required
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              >
+                <option value="">– Auswählen –</option>
+                {employeeList.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-sm text-silver" htmlFor="project_id">
+                Auftrag
+              </label>
+              <select
+                id="project_id"
+                name="project_id"
+                required
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              >
+                <option value="">– Auswählen –</option>
+                {projectList.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-sm text-silver" htmlFor="date">
+                Datum
+              </label>
+              <input
+                id="date"
+                name="date"
+                type="date"
+                required
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-sm text-silver" htmlFor="start_time">
+                Von
+              </label>
+              <input
+                id="start_time"
+                name="start_time"
+                type="time"
+                required
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-sm text-silver" htmlFor="end_time">
+                Bis
+              </label>
+              <input
+                id="end_time"
+                name="end_time"
+                type="time"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div className="w-28">
+              <label className="mb-1 block text-sm text-silver" htmlFor="break_minutes">
+                Pause (min)
+              </label>
+              <input
+                id="break_minutes"
+                name="break_minutes"
+                type="number"
+                min={0}
+                defaultValue={0}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-silver" htmlFor="note">
+              Notiz
+            </label>
+            <input
+              id="note"
+              name="note"
+              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+          >
+            Zeit erfassen
+          </button>
+        </form>
+      </details>
+
+      {timeEntries.length === 0 ? (
         <p className="text-sm text-silver">Noch keine Zeiten erfasst.</p>
       ) : (
         <div className="overflow-x-auto rounded border border-border">
@@ -65,7 +189,7 @@ export default async function AdminTimePage() {
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
+              {timeEntries.map((entry) => (
                 <tr key={entry.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 text-silver-light">{entry.user_name}</td>
                   <td className="px-4 py-3 text-silver-light">{entry.project_title}</td>

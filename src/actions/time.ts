@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { requireUser, requireAdmin } from "@/lib/auth";
-import { optionalString } from "@/lib/validation";
+import { optionalString, requireString } from "@/lib/validation";
 
 export async function clockIn(projectId: number) {
   const user = await requireUser();
@@ -45,6 +45,34 @@ export async function clockOut(projectId: number, formData: FormData) {
   revalidatePath("/");
   revalidatePath("/zeiten");
   redirect(`/auftrag/${projectId}?saved=1`);
+}
+
+export async function createTimeEntry(formData: FormData) {
+  await requireAdmin();
+
+  const userId = Number(requireString(formData.get("user_id"), "Mitarbeiter"));
+  const projectId = Number(requireString(formData.get("project_id"), "Auftrag"));
+  const date = requireString(formData.get("date"), "Datum");
+  const startTime = requireString(formData.get("start_time"), "Von");
+  const endTime = optionalString(formData.get("end_time"));
+  const breakMinutesRaw = optionalString(formData.get("break_minutes"));
+  const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
+  const note = optionalString(formData.get("note"));
+
+  if (!Number.isInteger(userId) || !Number.isInteger(projectId)) {
+    throw new Error("Ungültiger Mitarbeiter oder Auftrag.");
+  }
+
+  const startedAt = new Date(`${date}T${startTime}`);
+  const endedAt = endTime ? new Date(`${date}T${endTime}`) : null;
+
+  await sql`
+    INSERT INTO time_entries (user_id, project_id, started_at, ended_at, break_minutes, note, edited_by_admin)
+    VALUES (${userId}, ${projectId}, ${startedAt}, ${endedAt}, ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, ${note}, true)
+  `;
+
+  revalidatePath("/admin/zeiten");
+  redirect("/admin/zeiten?saved=1");
 }
 
 export async function updateTimeEntry(id: number, formData: FormData) {
