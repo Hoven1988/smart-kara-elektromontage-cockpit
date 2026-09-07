@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { LoginForm } from "@/components/login-form";
-import { DevFooter } from "@/components/dev-footer";
 
 export default function LoginPage() {
   return (
@@ -14,9 +13,6 @@ export default function LoginPage() {
         className="mb-10 h-auto max-h-20 w-auto"
       />
       <LoginForm />
-      <div className="mt-10 w-full max-w-sm">
-        <DevFooter />
-      </div>
     </div>
   );
 }

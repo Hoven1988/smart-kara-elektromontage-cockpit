@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getCurrentUser, homePathForRole } from "@/lib/auth";
-import { DevFooter } from "@/components/dev-footer";
 
 export default async function WelcomePage() {
   const user = await getCurrentUser();
@@ -25,9 +24,6 @@ export default async function WelcomePage() {
       >
         Zum KARA Cockpit
       </Link>
-      <div className="mt-16">
-        <DevFooter compact />
-      </div>
     </div>
   );
 }

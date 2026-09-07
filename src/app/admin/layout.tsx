@@ -1,6 +1,5 @@
 import { ClientTreeNav } from "@/components/client-tree-nav";
 import { AdminSidebarNav } from "@/components/admin-sidebar-nav";
-import { DevFooter } from "@/components/dev-footer";
 import { SaveToast } from "@/components/save-toast";
 
 // Diese Seiten lesen bei jedem Aufruf frische Daten aus der Datenbank -
@@ -16,7 +15,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
       <div className="flex flex-1 flex-col overflow-y-auto">
         <main className="flex flex-col">{children}</main>
-        <DevFooter />
       </div>
       <SaveToast />
     </div>
