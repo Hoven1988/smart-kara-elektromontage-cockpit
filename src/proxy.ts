@@ -21,6 +21,12 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(homePathForRole(session.role), req.url));
   }
 
+  // Admins landen sonst versehentlich auf der Monteur-Startseite "/",
+  // wenn sie direkt die Basis-URL aufrufen statt über /willkommen zu gehen.
+  if (pathname === "/" && session.role === "admin") {
+    return NextResponse.redirect(new URL("/admin", req.url));
+  }
+
   return NextResponse.next();
 }
 
