@@ -36,7 +36,7 @@ export default async function ProjectDetailPage({
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
 
-  const [projects, customers, timeRows, materialRows, docRows] = await Promise.all([
+  const [projects, customers, timeRows, serviceRows, materialRows, docRows] = await Promise.all([
     sql`
       SELECT id, title, customer_id, address, status, description, start_date, end_date
       FROM projects
@@ -49,6 +49,13 @@ export default async function ProjectDetailPage({
       JOIN users u ON u.id = t.user_id
       WHERE t.project_id = ${id}
       ORDER BY t.started_at DESC
+    `,
+    sql`
+      SELECT s.id, s.description, s.note, s.created_at, u.name AS user_name
+      FROM service_entries s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.project_id = ${id}
+      ORDER BY s.created_at DESC
     `,
     sql`
       SELECT m.id, m.description, m.quantity, m.unit, m.note, m.created_at, u.name AS user_name
@@ -92,6 +99,14 @@ export default async function ProjectDetailPage({
     (sum, e) => sum + durationMinutes(e.started_at, e.ended_at, e.break_minutes),
     0
   );
+
+  const serviceEntries = serviceRows as unknown as Array<{
+    id: number;
+    description: string;
+    note: string | null;
+    created_at: unknown;
+    user_name: string;
+  }>;
 
   const materialEntries = materialRows as unknown as Array<{
     id: number;
@@ -143,6 +158,25 @@ export default async function ProjectDetailPage({
                   – {toDateTimeLabel(entry.started_at)} ·{" "}
                   {minutesLabel(durationMinutes(entry.started_at, entry.ended_at, entry.break_minutes))}
                   {entry.note ? ` · ${entry.note}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-silver-light">Geleistete Arbeit</h2>
+        {serviceEntries.length === 0 ? (
+          <p className="text-sm text-silver">Noch keine Arbeit erfasst.</p>
+        ) : (
+          <ul className="flex max-w-2xl flex-col gap-2">
+            {serviceEntries.map((entry) => (
+              <li key={entry.id} className="rounded border border-border px-4 py-2 text-sm">
+                <span className="text-silver-light">{entry.description}</span>{" "}
+                <span className="text-silver">
+                  {entry.note ? `· ${entry.note} ` : ""}· {entry.user_name},{" "}
+                  {toDateTimeLabel(entry.created_at)}
                 </span>
               </li>
             ))}

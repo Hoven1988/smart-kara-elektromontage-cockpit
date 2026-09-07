@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { clockIn, clockOut } from "@/actions/time";
 import { createMaterialEntry } from "@/actions/material";
+import { createServiceEntry } from "@/actions/service";
 import { uploadProjectPhoto, addProjectNote } from "@/actions/docs";
 
 function toDateTimeLabel(value: unknown): string {
@@ -67,12 +68,19 @@ export default async function MonteurProjectPage({
   `;
   const openEntry = (openEntryRows as unknown as Array<{ id: number; started_at: unknown }>)[0];
 
-  const [ownEntriesRows, materialRows, docRows] = await Promise.all([
+  const [ownEntriesRows, serviceRows, materialRows, docRows] = await Promise.all([
     sql`
       SELECT id, started_at, ended_at, break_minutes, note
       FROM time_entries
       WHERE user_id = ${user.userId} AND project_id = ${projectId}
       ORDER BY started_at DESC
+    `,
+    sql`
+      SELECT s.id, s.description, s.note, s.created_at, u.name AS user_name
+      FROM service_entries s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.project_id = ${projectId}
+      ORDER BY s.created_at DESC
     `,
     sql`
       SELECT m.id, m.description, m.quantity, m.unit, m.note, m.created_at, u.name AS user_name
@@ -96,6 +104,14 @@ export default async function MonteurProjectPage({
     ended_at: unknown;
     break_minutes: number;
     note: string | null;
+  }>;
+
+  const serviceEntries = serviceRows as unknown as Array<{
+    id: number;
+    description: string;
+    note: string | null;
+    created_at: unknown;
+    user_name: string;
   }>;
 
   const materialEntries = materialRows as unknown as Array<{
@@ -185,6 +201,49 @@ export default async function MonteurProjectPage({
                 <span className="text-silver">
                   – {durationLabel(entry.started_at, entry.ended_at, entry.break_minutes)}
                   {entry.note ? ` · ${entry.note}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-silver-light">Geleistete Arbeit</h2>
+        <form
+          action={createServiceEntry.bind(null, projectId)}
+          className="mb-4 flex max-w-lg flex-col gap-3"
+        >
+          <textarea
+            name="description"
+            required
+            rows={2}
+            placeholder="Was wurde gemacht? (z.B. Zählerschrank ausgetauscht, 3 Steckdosen gesetzt)"
+            className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+          />
+          <input
+            name="note"
+            placeholder="Notiz (optional)"
+            className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+          />
+          <button
+            type="submit"
+            className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+          >
+            Arbeit erfassen
+          </button>
+        </form>
+
+        {serviceEntries.length === 0 ? (
+          <p className="text-sm text-silver">Noch keine Arbeit erfasst.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {serviceEntries.map((entry) => (
+              <li key={entry.id} className="rounded border border-border px-4 py-2 text-sm">
+                <span className="text-silver-light">{entry.description}</span>{" "}
+                <span className="text-silver">
+                  {entry.note ? `· ${entry.note} ` : ""}· {entry.user_name},{" "}
+                  {toDateTimeLabel(entry.created_at)}
                 </span>
               </li>
             ))}

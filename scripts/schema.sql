@@ -79,6 +79,15 @@ CREATE TABLE IF NOT EXISTS material_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS service_entries (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS doc_entries (
   id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -102,4 +111,5 @@ CREATE INDEX IF NOT EXISTS idx_assignments_user_date ON assignments(user_id, dat
 CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_project ON time_entries(project_id);
 CREATE INDEX IF NOT EXISTS idx_material_entries_project ON material_entries(project_id);
+CREATE INDEX IF NOT EXISTS idx_service_entries_project ON service_entries(project_id);
 CREATE INDEX IF NOT EXISTS idx_doc_entries_project ON doc_entries(project_id);
