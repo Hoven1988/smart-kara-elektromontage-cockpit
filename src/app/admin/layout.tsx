@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
+import { DevFooter } from "@/components/dev-footer";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard" },
@@ -9,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/admin/planung", label: "Einsatzplanung" },
   { href: "/admin/zeiten", label: "Zeiten" },
   { href: "/admin/mitarbeiter", label: "Mitarbeiter" },
+  { href: "/admin/einstellungen", label: "Einstellungen" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +33,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           ))}
         </nav>
+        <div className="mt-auto">
+          <DevFooter compact />
+        </div>
       </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border px-6 py-4">

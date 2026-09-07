@@ -1,6 +1,14 @@
 -- Schema für Smart-Kara-Elektromontage-Cockpit
 -- Ausführen mit: node scripts/migrate.mjs
 
+-- Einzelne Zeile (id=1) für firmenspezifische Einstellungen des Kunden,
+-- z.B. optionales eigenes Logo auf der Login-Seite.
+CREATE TABLE IF NOT EXISTS company_settings (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  logo_blob_url TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
