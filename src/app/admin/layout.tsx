@@ -3,6 +3,11 @@ import { AdminSidebarNav } from "@/components/admin-sidebar-nav";
 import { DevFooter } from "@/components/dev-footer";
 import { SaveToast } from "@/components/save-toast";
 
+// Diese Seiten lesen bei jedem Aufruf frische Daten aus der Datenbank -
+// nie statisch vorab berechnen (würde beim Bauen live DB-Zugriffe
+// auslösen, die am Supabase-Pooler scheitern können).
+export const dynamic = "force-dynamic";
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1">

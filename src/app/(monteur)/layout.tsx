@@ -4,6 +4,9 @@ import { LogoutButton } from "@/components/logout-button";
 import { DevFooter } from "@/components/dev-footer";
 import { SaveToast } from "@/components/save-toast";
 
+// Wie im Admin-Bereich: nie statisch vorab berechnen.
+export const dynamic = "force-dynamic";
+
 export default async function MonteurLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
 
