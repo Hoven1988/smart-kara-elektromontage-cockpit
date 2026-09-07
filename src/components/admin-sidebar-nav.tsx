@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { LogoutButton } from "@/components/logout-button";
-import { DevFooter } from "@/components/dev-footer";
 
 const FLAT_ITEMS = [
   { href: "/admin/planung", label: "Einsatzplanung" },
@@ -13,37 +12,27 @@ const FLAT_ITEMS = [
   { href: "/admin/einstellungen", label: "Einstellungen" },
 ];
 
-export function AdminSidebarNav({
-  clientTree,
-  userName,
-}: {
-  clientTree: ReactNode;
-  userName: string;
-}) {
+export function AdminSidebarNav({ clientTree }: { clientTree: ReactNode }) {
   const pathname = usePathname();
   const [auftraggeberOpen, setAuftraggeberOpen] = useState(false);
 
-  const isAuftraggeberSection = pathname.startsWith("/admin/kunden") || pathname.startsWith("/admin/auftraege");
-
   return (
-    <>
+    <div className="flex flex-1 flex-col">
       <Link
         href="/admin"
-        className={`mb-4 rounded px-4 py-2 text-sm font-semibold tracking-wide transition-colors ${
+        className={`px-6 py-3 text-sm font-semibold tracking-wide transition-colors ${
           pathname === "/admin" ? "bg-copper text-background" : "text-copper-light hover:bg-card"
         }`}
       >
         KARA Cockpit
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">
+      <nav className="flex flex-1 flex-col overflow-y-auto">
         <button
           type="button"
           onClick={() => setAuftraggeberOpen((v) => !v)}
           aria-expanded={auftraggeberOpen}
-          className={`flex items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors hover:bg-card ${
-            isAuftraggeberSection ? "text-silver-light" : "text-silver"
-          }`}
+          className="flex items-center justify-between px-6 py-3 text-left text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
         >
           Auftraggeber
           <span
@@ -53,9 +42,7 @@ export function AdminSidebarNav({
             ▸
           </span>
         </button>
-        <div className={auftraggeberOpen ? "block" : "hidden"}>{clientTree}</div>
-
-        <div className="my-2 border-t border-border" />
+        {auftraggeberOpen && <div className="px-4 pb-1">{clientTree}</div>}
 
         {FLAT_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
@@ -63,7 +50,7 @@ export function AdminSidebarNav({
             <Link
               key={item.href}
               href={item.href}
-              className={`rounded px-3 py-2 text-sm transition-colors hover:bg-card ${
+              className={`px-6 py-3 text-sm transition-colors hover:bg-card ${
                 active ? "text-silver-light" : "text-silver"
               }`}
             >
@@ -73,13 +60,9 @@ export function AdminSidebarNav({
         })}
       </nav>
 
-      <div className="flex flex-col gap-1 border-t border-border px-2 pt-3">
-        <p className="px-3 py-1 text-xs text-silver">Angemeldet als {userName}</p>
+      <div className="mt-auto pb-4">
         <LogoutButton variant="link" />
-        <div className="mt-2">
-          <DevFooter compact />
-        </div>
       </div>
-    </>
+    </div>
   );
 }

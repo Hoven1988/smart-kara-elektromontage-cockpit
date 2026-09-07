@@ -15,7 +15,7 @@ export function LogoutButton({ variant = "button" }: { variant?: "button" | "lin
     return (
       <button
         onClick={handleLogout}
-        className="rounded px-3 py-2 text-left text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
+        className="w-full px-6 py-3 text-left text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
       >
         Abmelden
       </button>
