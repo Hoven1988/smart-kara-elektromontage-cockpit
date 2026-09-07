@@ -31,9 +31,9 @@ export function ClientTreeNavClient({
     <div className="flex flex-col gap-1">
       <Link
         href="/admin/kunden"
-        className="rounded px-3 py-2 text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
+        className="rounded px-3 py-1.5 text-xs text-silver transition-colors hover:bg-card hover:text-silver-light"
       >
-        Auftraggeber
+        Alle Auftraggeber →
       </Link>
       <div className="flex flex-col">
         {customers.map((customer) => {
