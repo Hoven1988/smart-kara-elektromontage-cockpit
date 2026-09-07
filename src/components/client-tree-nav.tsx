@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { sql } from "@/lib/db";
+import { ClientTreeNavClient } from "@/components/client-tree-nav-client";
 
 type Row = {
   customer_id: number | null;
@@ -31,58 +31,7 @@ export async function ClientTreeNav() {
     }
   }
 
-  return (
-    <div className="flex flex-col gap-1">
-      <Link
-        href="/admin/kunden"
-        className="rounded px-3 py-2 text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
-      >
-        Auftraggeber
-      </Link>
-      <div className="flex flex-col">
-        {[...customers.entries()].map(([customerId, customer]) => (
-          <div key={customerId}>
-            <Link
-              href={`/admin/kunden/${customerId}`}
-              className="block truncate rounded px-3 py-1.5 text-sm text-silver-light transition-colors hover:bg-card"
-            >
-              {customer.name}
-            </Link>
-            <div className="ml-3 flex flex-col border-l border-border pl-3">
-              {customer.projects.length === 0 ? (
-                <span className="px-2 py-1 text-xs text-silver">Keine Projekte</span>
-              ) : (
-                customer.projects.map((project) => (
-                  <Link
-                    key={project.id}
-                    href={`/admin/auftraege/${project.id}`}
-                    className="truncate rounded px-2 py-1 text-xs text-silver transition-colors hover:bg-card hover:text-silver-light"
-                  >
-                    {project.title}
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+  const customerList = [...customers.entries()].map(([id, c]) => ({ id, name: c.name, projects: c.projects }));
 
-      {unassigned.length > 0 && (
-        <div>
-          <p className="px-3 py-1.5 text-sm text-silver">Ohne Auftraggeber</p>
-          <div className="ml-3 flex flex-col border-l border-border pl-3">
-            {unassigned.map((project) => (
-              <Link
-                key={project.id}
-                href={`/admin/auftraege/${project.id}`}
-                className="truncate rounded px-2 py-1 text-xs text-silver transition-colors hover:bg-card hover:text-silver-light"
-              >
-                {project.title}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return <ClientTreeNavClient customers={customerList} unassigned={unassigned} />;
 }
