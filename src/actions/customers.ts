@@ -24,7 +24,7 @@ export async function createCustomer(formData: FormData) {
 
   const newId = (rows as unknown as Array<{ id: number }>)[0].id;
   revalidatePath("/admin/kunden");
-  redirect(`/admin/kunden/${newId}`);
+  redirect(`/admin/kunden/${newId}?saved=1`);
 }
 
 export async function updateCustomer(id: number, formData: FormData) {
@@ -46,4 +46,5 @@ export async function updateCustomer(id: number, formData: FormData) {
 
   revalidatePath("/admin/kunden");
   revalidatePath(`/admin/kunden/${id}`);
+  redirect(`/admin/kunden/${id}?saved=1`);
 }

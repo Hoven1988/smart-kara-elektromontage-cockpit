@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { put, del } from "@vercel/blob";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
@@ -32,6 +33,7 @@ export async function uploadCompanyLogo(formData: FormData) {
 
   revalidatePath("/login");
   revalidatePath("/admin/einstellungen");
+  redirect("/admin/einstellungen?saved=1");
 }
 
 export async function removeCompanyLogo() {

@@ -33,7 +33,7 @@ export async function createProject(formData: FormData) {
 
   const newId = (rows as unknown as Array<{ id: number }>)[0].id;
   revalidatePath("/admin/auftraege");
-  redirect(`/admin/auftraege/${newId}`);
+  redirect(`/admin/auftraege/${newId}?saved=1`);
 }
 
 export async function updateProject(id: number, formData: FormData) {
@@ -57,4 +57,5 @@ export async function updateProject(id: number, formData: FormData) {
 
   revalidatePath("/admin/auftraege");
   revalidatePath(`/admin/auftraege/${id}`);
+  redirect(`/admin/auftraege/${id}?saved=1`);
 }

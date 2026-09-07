@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { requireString, optionalString } from "@/lib/validation";
@@ -25,6 +26,7 @@ export async function createAssignment(formData: FormData) {
   `;
 
   revalidatePath("/admin/planung");
+  redirect("/admin/planung?saved=1");
 }
 
 export async function deleteAssignment(id: number) {

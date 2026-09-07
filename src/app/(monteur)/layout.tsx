@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { DevFooter } from "@/components/dev-footer";
+import { SaveToast } from "@/components/save-toast";
 
 export default async function MonteurLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -33,6 +34,7 @@ export default async function MonteurLayout({ children }: { children: React.Reac
         </Link>
       </nav>
       <DevFooter compact />
+      <SaveToast />
     </div>
   );
 }

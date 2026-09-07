@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { requireUser, requireAdmin } from "@/lib/auth";
 import { optionalString } from "@/lib/validation";
@@ -24,6 +25,7 @@ export async function clockIn(projectId: number) {
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath("/");
   revalidatePath("/zeiten");
+  redirect(`/auftrag/${projectId}?saved=1`);
 }
 
 export async function clockOut(projectId: number, formData: FormData) {
@@ -42,6 +44,7 @@ export async function clockOut(projectId: number, formData: FormData) {
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath("/");
   revalidatePath("/zeiten");
+  redirect(`/auftrag/${projectId}?saved=1`);
 }
 
 export async function updateTimeEntry(id: number, formData: FormData) {
@@ -65,4 +68,5 @@ export async function updateTimeEntry(id: number, formData: FormData) {
   }
 
   revalidatePath("/admin/zeiten");
+  redirect("/admin/zeiten?saved=1");
 }

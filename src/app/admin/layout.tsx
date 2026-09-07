@@ -1,6 +1,7 @@
 import { ClientTreeNav } from "@/components/client-tree-nav";
 import { AdminSidebarNav } from "@/components/admin-sidebar-nav";
 import { DevFooter } from "@/components/dev-footer";
+import { SaveToast } from "@/components/save-toast";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main className="flex flex-col">{children}</main>
         <DevFooter />
       </div>
+      <SaveToast />
     </div>
   );
 }

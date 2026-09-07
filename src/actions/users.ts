@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
@@ -29,6 +30,7 @@ export async function setEmployeeActive(id: number, active: boolean) {
   await requireAdmin();
   await sql`UPDATE users SET active = ${active} WHERE id = ${id}`;
   revalidatePath("/admin/mitarbeiter");
+  redirect(`/admin/mitarbeiter/${id}?saved=1`);
 }
 
 export async function resetEmployeePassword(id: number, formData: FormData) {
@@ -37,4 +39,5 @@ export async function resetEmployeePassword(id: number, formData: FormData) {
   const passwordHash = await bcrypt.hash(password, 10);
   await sql`UPDATE users SET password_hash = ${passwordHash} WHERE id = ${id}`;
   revalidatePath("/admin/mitarbeiter");
+  redirect(`/admin/mitarbeiter/${id}?saved=1`);
 }

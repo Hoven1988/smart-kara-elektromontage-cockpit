@@ -4,7 +4,7 @@ import { createEmployee } from "@/actions/users";
 async function createAndRedirect(formData: FormData) {
   "use server";
   await createEmployee(formData);
-  redirect("/admin/mitarbeiter");
+  redirect("/admin/mitarbeiter?saved=1");
 }
 
 export default function NewEmployeePage() {
