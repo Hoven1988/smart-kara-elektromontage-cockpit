@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
-/* Markenfarben Hoven - smart Digital e.K. (aus hoven-smart-digital.de),
-   Token-Namen (copper/silver) aus der ersten KARA-Version beibehalten,
-   Werte auf die Hoven-Marke umgestellt. */
+/* Markenfarben Hoven - smart Digital e.K., abgestimmt auf den tatsächlichen
+   Produkt-Stil (helles Creme + dunkles Braun, wie im bestehenden
+   "Smart Cockpit"), nicht die kräftigeren Marketing-Website-Farben.
+   Token-Namen (copper/silver) aus der ersten KARA-Version beibehalten. */
 :root {
-  --background: #221d16;
-  --foreground: #ece6d9;
-  --card: #2e2820;
-  --border: #423a2c;
-  --copper: #f99800;
-  --copper-light: #ffb13d;
-  --silver: #aba192;
-  --silver-light: #efe9dc;
-  --danger: #e0553d;
+  --background: #faf8f3;
+  --foreground: #2c2a26;
+  --card: #ffffff;
+  --border: #e5e0d5;
+  --copper: #5b4430;
+  --copper-light: #75593d;
+  --silver: #6b6558;
+  --silver-light: #24211d;
+  --danger: #b03a2e;
 }
 
 @theme inline {
