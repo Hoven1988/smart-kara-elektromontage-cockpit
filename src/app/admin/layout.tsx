@@ -2,11 +2,11 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/logout-button";
 import { DevFooter } from "@/components/dev-footer";
+import { ClientTreeNav } from "@/components/client-tree-nav";
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/kunden", label: "Kunden" },
-  { href: "/admin/auftraege", label: "Aufträge" },
+const NAV_ITEMS_TOP = [{ href: "/admin", label: "Dashboard" }];
+
+const NAV_ITEMS_BOTTOM = [
   { href: "/admin/planung", label: "Einsatzplanung" },
   { href: "/admin/zeiten", label: "Zeiten" },
   { href: "/admin/mitarbeiter", label: "Mitarbeiter" },
@@ -18,12 +18,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex flex-1">
-      <aside className="flex w-56 flex-col border-r border-border px-4 py-6">
-        <p className="mb-6 px-2 text-lg font-semibold tracking-wide text-copper-light">
+      <aside className="flex w-64 flex-col border-r border-border py-6">
+        <p className="mb-6 px-6 text-lg font-semibold tracking-wide text-copper-light">
           KARA Cockpit
         </p>
-        <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-4">
+          {NAV_ITEMS_TOP.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded px-3 py-2 text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
+            >
+              {item.label}
+            </Link>
+          ))}
+
+          <div className="my-2 border-t border-border" />
+
+          <ClientTreeNav />
+
+          <div className="my-2 border-t border-border" />
+
+          {NAV_ITEMS_BOTTOM.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -33,7 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           ))}
         </nav>
-        <div className="mt-auto">
+        <div className="px-4">
           <DevFooter compact />
         </div>
       </aside>

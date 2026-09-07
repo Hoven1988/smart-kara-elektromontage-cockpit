@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
-import { SESSION_COOKIE, createSessionToken, homePathForRole, type Role } from "@/lib/auth";
+import { SESSION_COOKIE, createSessionToken, type Role } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const token = await createSessionToken({ userId: user.id, role: user.role, name: user.name });
 
-  const res = NextResponse.json({ ok: true, redirectTo: homePathForRole(user.role) });
+  const res = NextResponse.json({ ok: true, redirectTo: "/willkommen" });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
