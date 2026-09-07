@@ -1,0 +1,154 @@
+import { notFound } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { sql } from "@/lib/db";
+import { clockIn, clockOut } from "@/actions/time";
+
+function toDateTimeLabel(value: unknown): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(String(value));
+  return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+}
+
+function durationLabel(start: unknown, end: unknown, breakMinutes: number): string {
+  if (!start || !end) return "läuft…";
+  const startDate = start instanceof Date ? start : new Date(String(start));
+  const endDate = end instanceof Date ? end : new Date(String(end));
+  const minutes = Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 60000) - breakMinutes);
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h ${mins}min`;
+}
+
+export default async function MonteurProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: idParam } = await params;
+  const projectId = Number(idParam);
+  if (!Number.isInteger(projectId)) notFound();
+
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const projects = (await sql`
+    SELECT id, title, address, description, status
+    FROM projects
+    WHERE id = ${projectId}
+  `) as unknown as Array<{
+    id: number;
+    title: string;
+    address: string | null;
+    description: string | null;
+    status: string;
+  }>;
+  const project = projects[0];
+  if (!project) notFound();
+
+  if (user.role !== "admin") {
+    const assignmentCheck = await sql`
+      SELECT 1 FROM assignments WHERE project_id = ${projectId} AND user_id = ${user.userId} LIMIT 1
+    `;
+    if ((assignmentCheck as unknown as unknown[]).length === 0) {
+      return (
+        <div className="flex flex-1 flex-col px-6 py-6">
+          <p className="text-sm text-silver">Dir ist dieser Auftrag nicht zugewiesen.</p>
+        </div>
+      );
+    }
+  }
+
+  const openEntryRows = await sql`
+    SELECT id, started_at FROM time_entries
+    WHERE user_id = ${user.userId} AND project_id = ${projectId} AND ended_at IS NULL
+  `;
+  const openEntry = (openEntryRows as unknown as Array<{ id: number; started_at: unknown }>)[0];
+
+  const ownEntries = (await sql`
+    SELECT id, started_at, ended_at, break_minutes, note
+    FROM time_entries
+    WHERE user_id = ${user.userId} AND project_id = ${projectId}
+    ORDER BY started_at DESC
+  `) as unknown as Array<{
+    id: number;
+    started_at: unknown;
+    ended_at: unknown;
+    break_minutes: number;
+    note: string | null;
+  }>;
+
+  return (
+    <div className="flex flex-1 flex-col px-6 py-6">
+      <h1 className="mb-1 text-xl font-semibold text-silver-light">{project.title}</h1>
+      {project.address && <p className="mb-4 text-sm text-silver">{project.address}</p>}
+      {project.description && (
+        <p className="mb-6 max-w-lg text-sm text-silver">{project.description}</p>
+      )}
+
+      <div className="mb-8">
+        {openEntry ? (
+          <form action={clockOut.bind(null, projectId)} className="flex max-w-sm flex-col gap-3">
+            <p className="text-sm text-silver">
+              Eingestempelt seit {toDateTimeLabel(openEntry.started_at)}
+            </p>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="break_minutes">
+                Pause (Minuten)
+              </label>
+              <input
+                id="break_minutes"
+                name="break_minutes"
+                type="number"
+                min={0}
+                defaultValue={0}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="note">
+                Notiz
+              </label>
+              <input
+                id="note"
+                name="note"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <button
+              type="submit"
+              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+            >
+              Ausstempeln
+            </button>
+          </form>
+        ) : (
+          <form action={clockIn.bind(null, projectId)}>
+            <button
+              type="submit"
+              className="rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+            >
+              Einstempeln
+            </button>
+          </form>
+        )}
+      </div>
+
+      <h2 className="mb-3 text-lg font-semibold text-silver-light">Meine Zeiten hier</h2>
+      {ownEntries.length === 0 ? (
+        <p className="text-sm text-silver">Noch keine Zeiten erfasst.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {ownEntries.map((entry) => (
+            <li key={entry.id} className="rounded border border-border px-4 py-2 text-sm">
+              <span className="text-silver-light">{toDateTimeLabel(entry.started_at)}</span>{" "}
+              <span className="text-silver">
+                – {durationLabel(entry.started_at, entry.ended_at, entry.break_minutes)}
+                {entry.note ? ` · ${entry.note}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
