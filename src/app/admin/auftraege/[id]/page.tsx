@@ -16,6 +16,12 @@ function toDateTimeLabel(value: unknown): string {
   return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
 }
 
+function toTimestamp(value: unknown): number {
+  if (!value) return 0;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return date.getTime();
+}
+
 function durationMinutes(start: unknown, end: unknown, breakMinutes: number): number {
   if (!start || !end) return 0;
   const startDate = start instanceof Date ? start : new Date(String(start));
@@ -26,6 +32,20 @@ function durationMinutes(start: unknown, end: unknown, breakMinutes: number): nu
 function minutesLabel(minutes: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 }
+
+function TypeBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mr-2 rounded-full border border-border px-2 py-0.5 text-xs text-silver">
+      {children}
+    </span>
+  );
+}
+
+type TimelineEvent = {
+  key: string;
+  timestamp: unknown;
+  content: React.ReactNode;
+};
 
 export default async function ProjectDetailPage({
   params,
@@ -127,104 +147,111 @@ export default async function ProjectDetailPage({
     user_name: string;
   }>;
 
+  const timeline: TimelineEvent[] = [
+    ...timeEntries.map((entry) => ({
+      key: `time-${entry.id}`,
+      timestamp: entry.started_at,
+      content: (
+        <>
+          <TypeBadge>Zeit</TypeBadge>
+          <span className="text-silver-light">{entry.user_name}</span>{" "}
+          <span className="text-silver">
+            – {toDateTimeLabel(entry.started_at)} ·{" "}
+            {minutesLabel(durationMinutes(entry.started_at, entry.ended_at, entry.break_minutes))}
+            {entry.note ? ` · ${entry.note}` : ""}
+          </span>
+        </>
+      ),
+    })),
+    ...serviceEntries.map((entry) => ({
+      key: `service-${entry.id}`,
+      timestamp: entry.created_at,
+      content: (
+        <>
+          <TypeBadge>Arbeit</TypeBadge>
+          <span className="text-silver-light">{entry.description}</span>{" "}
+          <span className="text-silver">
+            {entry.note ? `· ${entry.note} ` : ""}· {entry.user_name}, {toDateTimeLabel(entry.created_at)}
+          </span>
+        </>
+      ),
+    })),
+    ...materialEntries.map((entry) => ({
+      key: `material-${entry.id}`,
+      timestamp: entry.created_at,
+      content: (
+        <>
+          <TypeBadge>Material</TypeBadge>
+          <span className="text-silver-light">{entry.description}</span>{" "}
+          <span className="text-silver">
+            {entry.quantity != null && `· ${entry.quantity}${entry.unit ? ` ${entry.unit}` : ""}`}
+            {entry.note ? ` · ${entry.note}` : ""} · {entry.user_name}, {toDateTimeLabel(entry.created_at)}
+          </span>
+        </>
+      ),
+    })),
+    ...docEntries.map((entry) => ({
+      key: `doc-${entry.id}`,
+      timestamp: entry.created_at,
+      content: (
+        <>
+          <TypeBadge>{entry.type === "photo" ? "Foto" : "Notiz"}</TypeBadge>
+          {entry.type === "photo" && entry.blob_url && (
+            <Image
+              src={entry.blob_url}
+              alt={entry.text ?? "Baustellenfoto"}
+              width={480}
+              height={360}
+              className="mt-2 mb-2 h-auto w-full max-w-xs rounded"
+            />
+          )}
+          {entry.text && <span className="text-silver-light">{entry.text}</span>}{" "}
+          <span className="text-silver">
+            · {entry.user_name}, {toDateTimeLabel(entry.created_at)}
+          </span>
+        </>
+      ),
+    })),
+  ].sort((a, b) => toTimestamp(b.timestamp) - toTimestamp(a.timestamp));
+
   return (
-    <div className="flex flex-1 flex-col gap-10 px-6 py-6">
+    <div className="flex flex-1 flex-col gap-8 px-6 py-6">
       <div>
-        <h1 className="mb-6 text-xl font-semibold text-silver-light">{project.title}</h1>
-        <ProjectForm
-          action={updateProject.bind(null, id)}
-          customers={customers as unknown as Array<{ id: number; name: string }>}
-          defaultValues={{
-            ...project,
-            start_date: toDateInputValue(project.start_date),
-            end_date: toDateInputValue(project.end_date),
-          }}
-          submitLabel="Speichern"
-        />
+        <h1 className="mb-1 text-xl font-semibold text-silver-light">{project.title}</h1>
+        {timeEntries.length > 0 && (
+          <p className="mb-4 text-sm text-silver">Gesamtzeit: {minutesLabel(totalMinutes)}</p>
+        )}
+
+        <details className="rounded border border-border">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
+            Auftragsdetails bearbeiten
+          </summary>
+          <div className="border-t border-border p-4">
+            <ProjectForm
+              action={updateProject.bind(null, id)}
+              customers={customers as unknown as Array<{ id: number; name: string }>}
+              defaultValues={{
+                ...project,
+                start_date: toDateInputValue(project.start_date),
+                end_date: toDateInputValue(project.end_date),
+              }}
+              submitLabel="Speichern"
+            />
+          </div>
+        </details>
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">
-          Zeiten {timeEntries.length > 0 && `· gesamt ${minutesLabel(totalMinutes)}`}
-        </h2>
-        {timeEntries.length === 0 ? (
-          <p className="text-sm text-silver">Noch keine Zeiten erfasst.</p>
+        <h2 className="mb-3 text-lg font-semibold text-silver-light">Akte / Verlauf</h2>
+        {timeline.length === 0 ? (
+          <p className="text-sm text-silver">
+            Noch nichts erfasst – Zeiten, Arbeit, Material und Fotos erscheinen hier chronologisch.
+          </p>
         ) : (
           <ul className="flex max-w-2xl flex-col gap-2">
-            {timeEntries.map((entry) => (
-              <li key={entry.id} className="rounded border border-border px-4 py-2 text-sm">
-                <span className="text-silver-light">{entry.user_name}</span>{" "}
-                <span className="text-silver">
-                  – {toDateTimeLabel(entry.started_at)} ·{" "}
-                  {minutesLabel(durationMinutes(entry.started_at, entry.ended_at, entry.break_minutes))}
-                  {entry.note ? ` · ${entry.note}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">Geleistete Arbeit</h2>
-        {serviceEntries.length === 0 ? (
-          <p className="text-sm text-silver">Noch keine Arbeit erfasst.</p>
-        ) : (
-          <ul className="flex max-w-2xl flex-col gap-2">
-            {serviceEntries.map((entry) => (
-              <li key={entry.id} className="rounded border border-border px-4 py-2 text-sm">
-                <span className="text-silver-light">{entry.description}</span>{" "}
-                <span className="text-silver">
-                  {entry.note ? `· ${entry.note} ` : ""}· {entry.user_name},{" "}
-                  {toDateTimeLabel(entry.created_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">Material</h2>
-        {materialEntries.length === 0 ? (
-          <p className="text-sm text-silver">Noch kein Material erfasst.</p>
-        ) : (
-          <ul className="flex max-w-2xl flex-col gap-2">
-            {materialEntries.map((entry) => (
-              <li key={entry.id} className="rounded border border-border px-4 py-2 text-sm">
-                <span className="text-silver-light">{entry.description}</span>{" "}
-                <span className="text-silver">
-                  {entry.quantity != null && `· ${entry.quantity}${entry.unit ? ` ${entry.unit}` : ""}`}
-                  {entry.note ? ` · ${entry.note}` : ""} · {entry.user_name},{" "}
-                  {toDateTimeLabel(entry.created_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">Fotos &amp; Notizen</h2>
-        {docEntries.length === 0 ? (
-          <p className="text-sm text-silver">Noch keine Fotos oder Notizen.</p>
-        ) : (
-          <ul className="flex max-w-2xl flex-col gap-3">
-            {docEntries.map((entry) => (
-              <li key={entry.id} className="rounded border border-border p-3 text-sm">
-                {entry.type === "photo" && entry.blob_url && (
-                  <Image
-                    src={entry.blob_url}
-                    alt={entry.text ?? "Baustellenfoto"}
-                    width={480}
-                    height={360}
-                    className="mb-2 h-auto w-full max-w-xs rounded"
-                  />
-                )}
-                {entry.text && <p className="text-silver-light">{entry.text}</p>}
-                <p className="mt-1 text-xs text-silver">
-                  {entry.user_name}, {toDateTimeLabel(entry.created_at)}
-                </p>
+            {timeline.map((event) => (
+              <li key={event.key} className="rounded border border-border px-4 py-2 text-sm">
+                {event.content}
               </li>
             ))}
           </ul>
