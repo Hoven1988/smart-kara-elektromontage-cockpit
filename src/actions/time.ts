@@ -99,6 +99,14 @@ export async function updateTimeEntry(id: number, formData: FormData) {
   redirect("/admin/zeiten?saved=1");
 }
 
+export async function deleteTimeEntry(id: number, redirectTo: string) {
+  await requireAdmin();
+  await sql`DELETE FROM time_entries WHERE id = ${id}`;
+  revalidatePath("/admin/zeiten");
+  revalidatePath("/zeiten");
+  redirect(`${redirectTo}?saved=1`);
+}
+
 export async function requestTimeEntryChange(timeEntryId: number, formData: FormData) {
   const user = await requireUser();
 

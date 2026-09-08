@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireAdmin } from "@/lib/auth";
 import { requireString, optionalString, optionalNumber } from "@/lib/validation";
 
 export async function createMaterialEntry(projectId: number, formData: FormData) {
@@ -23,4 +23,12 @@ export async function createMaterialEntry(projectId: number, formData: FormData)
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath(`/admin/auftraege/${projectId}`);
   redirect(`${returnTo}?saved=1`);
+}
+
+export async function deleteMaterialEntry(id: number, projectId: number, redirectTo: string) {
+  await requireAdmin();
+  await sql`DELETE FROM material_entries WHERE id = ${id}`;
+  revalidatePath(`/auftrag/${projectId}`);
+  revalidatePath(`/admin/auftraege/${projectId}`);
+  redirect(`${redirectTo}?saved=1`);
 }

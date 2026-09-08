@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { del } from "@vercel/blob";
 import { sql } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireAdmin } from "@/lib/auth";
 import { requireString, optionalString } from "@/lib/validation";
 
 /**
@@ -44,4 +45,21 @@ export async function addProjectNote(projectId: number, formData: FormData) {
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath(`/admin/auftraege/${projectId}`);
   redirect(`${returnTo}?saved=1`);
+}
+
+export async function deleteDocEntry(id: number, projectId: number, redirectTo: string) {
+  await requireAdmin();
+
+  const rows = await sql`SELECT blob_url FROM doc_entries WHERE id = ${id}`;
+  const blobUrl = (rows as unknown as Array<{ blob_url: string | null }>)[0]?.blob_url;
+
+  await sql`DELETE FROM doc_entries WHERE id = ${id}`;
+
+  if (blobUrl) {
+    await del(blobUrl).catch(() => {});
+  }
+
+  revalidatePath(`/auftrag/${projectId}`);
+  revalidatePath(`/admin/auftraege/${projectId}`);
+  redirect(`${redirectTo}?saved=1`);
 }

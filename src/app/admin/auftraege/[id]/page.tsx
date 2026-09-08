@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
 import { updateProject } from "@/actions/projects";
 import { ProjectForm } from "@/components/project-form";
-import { createServiceEntry } from "@/actions/service";
-import { createMaterialEntry } from "@/actions/material";
-import { addProjectNote } from "@/actions/docs";
+import { createServiceEntry, deleteServiceEntry } from "@/actions/service";
+import { createMaterialEntry, deleteMaterialEntry } from "@/actions/material";
+import { addProjectNote, deleteDocEntry } from "@/actions/docs";
+import { deleteTimeEntry } from "@/actions/time";
 import { PhotoUploadForm } from "@/components/photo-upload-form";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 function toDateInputValue(value: unknown): string {
   if (!value) return "";
@@ -49,6 +51,7 @@ type TimelineEvent = {
   key: string;
   timestamp: unknown;
   content: React.ReactNode;
+  deleteAction: (formData: FormData) => void | Promise<void>;
 };
 
 export default async function ProjectDetailPage({
@@ -155,6 +158,7 @@ export default async function ProjectDetailPage({
     ...timeEntries.map((entry) => ({
       key: `time-${entry.id}`,
       timestamp: entry.started_at,
+      deleteAction: deleteTimeEntry.bind(null, entry.id, `/admin/auftraege/${id}`),
       content: (
         <>
           <TypeBadge>Zeit</TypeBadge>
@@ -170,6 +174,7 @@ export default async function ProjectDetailPage({
     ...serviceEntries.map((entry) => ({
       key: `service-${entry.id}`,
       timestamp: entry.created_at,
+      deleteAction: deleteServiceEntry.bind(null, entry.id, id, `/admin/auftraege/${id}`),
       content: (
         <>
           <TypeBadge>Arbeit</TypeBadge>
@@ -183,6 +188,7 @@ export default async function ProjectDetailPage({
     ...materialEntries.map((entry) => ({
       key: `material-${entry.id}`,
       timestamp: entry.created_at,
+      deleteAction: deleteMaterialEntry.bind(null, entry.id, id, `/admin/auftraege/${id}`),
       content: (
         <>
           <TypeBadge>Material</TypeBadge>
@@ -197,6 +203,7 @@ export default async function ProjectDetailPage({
     ...docEntries.map((entry) => ({
       key: `doc-${entry.id}`,
       timestamp: entry.created_at,
+      deleteAction: deleteDocEntry.bind(null, entry.id, id, `/admin/auftraege/${id}`),
       content: (
         <>
           <TypeBadge>{entry.type === "photo" ? "Foto" : "Notiz"}</TypeBadge>
@@ -366,8 +373,19 @@ export default async function ProjectDetailPage({
         ) : (
           <ul className="flex max-w-2xl flex-col gap-2">
             {timeline.map((event) => (
-              <li key={event.key} className="rounded border border-border px-4 py-2 text-sm">
-                {event.content}
+              <li
+                key={event.key}
+                className="flex items-start justify-between gap-3 rounded border border-border px-4 py-2 text-sm"
+              >
+                <div className="flex-1">{event.content}</div>
+                <form action={event.deleteAction}>
+                  <ConfirmSubmitButton
+                    confirmMessage="Diesen Eintrag wirklich löschen?"
+                    className="shrink-0 text-xs text-silver hover:text-danger"
+                  >
+                    Löschen
+                  </ConfirmSubmitButton>
+                </form>
               </li>
             ))}
           </ul>
