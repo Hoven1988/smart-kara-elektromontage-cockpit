@@ -5,7 +5,8 @@ import { sql } from "@/lib/db";
 import { clockIn, clockOut } from "@/actions/time";
 import { createMaterialEntry } from "@/actions/material";
 import { createServiceEntry } from "@/actions/service";
-import { uploadProjectPhoto, addProjectNote } from "@/actions/docs";
+import { addProjectNote } from "@/actions/docs";
+import { PhotoUploadForm } from "@/components/photo-upload-form";
 
 function toDateTimeLabel(value: unknown): string {
   if (!value) return "";
@@ -312,30 +313,9 @@ export default async function MonteurProjectPage({
         <h2 className="mb-3 text-lg font-semibold text-silver-light">Fotos &amp; Notizen</h2>
 
         <div className="mb-4 flex flex-col gap-6 sm:flex-row">
-          <form
-            action={uploadProjectPhoto.bind(null, projectId)}
-            className="flex flex-1 flex-col gap-2"
-          >
-            <input
-              type="file"
-              name="photo"
-              accept="image/*"
-              capture="environment"
-              required
-              className="text-sm text-silver file:mr-3 file:rounded file:border-0 file:bg-copper file:px-3 file:py-2 file:text-sm file:font-medium file:text-background hover:file:bg-copper-light"
-            />
-            <input
-              name="text"
-              placeholder="Bildunterschrift (optional)"
-              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-            />
-            <button
-              type="submit"
-              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
-            >
-              Foto hochladen
-            </button>
-          </form>
+          <div className="flex-1">
+            <PhotoUploadForm projectId={projectId} redirectTo={`/auftrag/${projectId}`} />
+          </div>
 
           <form action={addProjectNote.bind(null, projectId)} className="flex flex-1 flex-col gap-2">
             <textarea

@@ -5,7 +5,8 @@ import { updateProject } from "@/actions/projects";
 import { ProjectForm } from "@/components/project-form";
 import { createServiceEntry } from "@/actions/service";
 import { createMaterialEntry } from "@/actions/material";
-import { uploadProjectPhoto, addProjectNote } from "@/actions/docs";
+import { addProjectNote } from "@/actions/docs";
+import { PhotoUploadForm } from "@/components/photo-upload-form";
 
 function toDateInputValue(value: unknown): string {
   if (!value) return "";
@@ -324,30 +325,9 @@ export default async function ProjectDetailPage({
             <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
               Foto
             </summary>
-            <form
-              action={uploadProjectPhoto.bind(null, id)}
-              className="flex flex-col gap-3 border-t border-border p-4"
-            >
-              <input type="hidden" name="_redirect" value={`/admin/auftraege/${id}`} />
-              <input
-                type="file"
-                name="photo"
-                accept="image/*"
-                required
-                className="text-sm text-silver file:mr-3 file:rounded file:border-0 file:bg-copper file:px-3 file:py-2 file:text-xs file:font-medium file:text-background hover:file:bg-copper-light"
-              />
-              <input
-                name="text"
-                placeholder="Bildunterschrift (optional)"
-                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
-              />
-              <button
-                type="submit"
-                className="self-start rounded bg-copper px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-copper-light"
-              >
-                Hochladen
-              </button>
-            </form>
+            <div className="border-t border-border p-4">
+              <PhotoUploadForm projectId={id} redirectTo={`/admin/auftraege/${id}`} />
+            </div>
           </details>
 
           <details className="flex-1 min-w-64 rounded border border-border">
