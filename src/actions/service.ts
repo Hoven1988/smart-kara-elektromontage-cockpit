@@ -17,7 +17,8 @@ export async function createServiceEntry(projectId: number, formData: FormData) 
     VALUES (${projectId}, ${user.userId}, ${description}, ${note})
   `;
 
+  const returnTo = optionalString(formData.get("_redirect")) ?? `/auftrag/${projectId}`;
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath(`/admin/auftraege/${projectId}`);
-  redirect(`/auftrag/${projectId}?saved=1`);
+  redirect(`${returnTo}?saved=1`);
 }

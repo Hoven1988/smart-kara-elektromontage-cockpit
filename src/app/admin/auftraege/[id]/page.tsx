@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
 import { updateProject } from "@/actions/projects";
 import { ProjectForm } from "@/components/project-form";
+import { createServiceEntry } from "@/actions/service";
+import { createMaterialEntry } from "@/actions/material";
+import { uploadProjectPhoto, addProjectNote } from "@/actions/docs";
 
 function toDateInputValue(value: unknown): string {
   if (!value) return "";
@@ -239,6 +242,139 @@ export default async function ProjectDetailPage({
             />
           </div>
         </details>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-silver-light">Neuer Eintrag</h2>
+        <div className="flex max-w-2xl flex-wrap gap-3">
+          <details className="flex-1 min-w-64 rounded border border-border">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
+              Geleistete Arbeit
+            </summary>
+            <form
+              action={createServiceEntry.bind(null, id)}
+              className="flex flex-col gap-3 border-t border-border p-4"
+            >
+              <input type="hidden" name="_redirect" value={`/admin/auftraege/${id}`} />
+              <textarea
+                name="description"
+                required
+                rows={2}
+                placeholder="Was wurde gemacht?"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+              />
+              <input
+                name="note"
+                placeholder="Notiz (optional)"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+              />
+              <button
+                type="submit"
+                className="self-start rounded bg-copper px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-copper-light"
+              >
+                Erfassen
+              </button>
+            </form>
+          </details>
+
+          <details className="flex-1 min-w-64 rounded border border-border">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
+              Material
+            </summary>
+            <form
+              action={createMaterialEntry.bind(null, id)}
+              className="flex flex-col gap-3 border-t border-border p-4"
+            >
+              <input type="hidden" name="_redirect" value={`/admin/auftraege/${id}`} />
+              <input
+                name="description"
+                required
+                placeholder="Was wurde verbaut?"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+              />
+              <div className="flex gap-2">
+                <input
+                  name="quantity"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Menge"
+                  className="w-20 rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+                />
+                <input
+                  name="unit"
+                  placeholder="Einheit"
+                  className="flex-1 rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+                />
+              </div>
+              <input
+                name="note"
+                placeholder="Notiz (optional)"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+              />
+              <button
+                type="submit"
+                className="self-start rounded bg-copper px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-copper-light"
+              >
+                Erfassen
+              </button>
+            </form>
+          </details>
+
+          <details className="flex-1 min-w-64 rounded border border-border">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
+              Foto
+            </summary>
+            <form
+              action={uploadProjectPhoto.bind(null, id)}
+              className="flex flex-col gap-3 border-t border-border p-4"
+            >
+              <input type="hidden" name="_redirect" value={`/admin/auftraege/${id}`} />
+              <input
+                type="file"
+                name="photo"
+                accept="image/*"
+                required
+                className="text-sm text-silver file:mr-3 file:rounded file:border-0 file:bg-copper file:px-3 file:py-2 file:text-xs file:font-medium file:text-background hover:file:bg-copper-light"
+              />
+              <input
+                name="text"
+                placeholder="Bildunterschrift (optional)"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+              />
+              <button
+                type="submit"
+                className="self-start rounded bg-copper px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-copper-light"
+              >
+                Hochladen
+              </button>
+            </form>
+          </details>
+
+          <details className="flex-1 min-w-64 rounded border border-border">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
+              Notiz
+            </summary>
+            <form
+              action={addProjectNote.bind(null, id)}
+              className="flex flex-col gap-3 border-t border-border p-4"
+            >
+              <input type="hidden" name="_redirect" value={`/admin/auftraege/${id}`} />
+              <textarea
+                name="text"
+                required
+                rows={2}
+                placeholder="Notiz…"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-copper"
+              />
+              <button
+                type="submit"
+                className="self-start rounded border border-border px-3 py-1.5 text-xs text-silver-light transition-colors hover:border-copper hover:text-copper-light"
+              >
+                Hinzufügen
+              </button>
+            </form>
+          </details>
+        </div>
       </div>
 
       <div>

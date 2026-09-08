@@ -25,9 +25,10 @@ export async function uploadProjectPhoto(projectId: number, formData: FormData) 
     VALUES (${projectId}, ${user.userId}, 'photo', ${blob.url}, ${text})
   `;
 
+  const returnTo = optionalString(formData.get("_redirect")) ?? `/auftrag/${projectId}`;
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath(`/admin/auftraege/${projectId}`);
-  redirect(`/auftrag/${projectId}?saved=1`);
+  redirect(`${returnTo}?saved=1`);
 }
 
 export async function addProjectNote(projectId: number, formData: FormData) {
@@ -40,7 +41,8 @@ export async function addProjectNote(projectId: number, formData: FormData) {
     VALUES (${projectId}, ${user.userId}, 'note', ${text})
   `;
 
+  const returnTo = optionalString(formData.get("_redirect")) ?? `/auftrag/${projectId}`;
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath(`/admin/auftraege/${projectId}`);
-  redirect(`/auftrag/${projectId}?saved=1`);
+  redirect(`${returnTo}?saved=1`);
 }

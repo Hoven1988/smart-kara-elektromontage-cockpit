@@ -19,7 +19,8 @@ export async function createMaterialEntry(projectId: number, formData: FormData)
     VALUES (${projectId}, ${user.userId}, ${description}, ${quantity}, ${unit}, ${note})
   `;
 
+  const returnTo = optionalString(formData.get("_redirect")) ?? `/auftrag/${projectId}`;
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath(`/admin/auftraege/${projectId}`);
-  redirect(`/auftrag/${projectId}?saved=1`);
+  redirect(`${returnTo}?saved=1`);
 }
