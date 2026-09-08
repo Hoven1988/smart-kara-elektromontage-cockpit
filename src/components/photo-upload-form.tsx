@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { createPhotoDocEntry } from "@/actions/docs";
 
@@ -11,6 +12,7 @@ export function PhotoUploadForm({
   projectId: number;
   redirectTo: string;
 }) {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -28,7 +30,9 @@ export function PhotoUploadForm({
         access: "public",
         handleUploadUrl: "/api/photo-upload",
       });
-      await createPhotoDocEntry(projectId, blob.url, textInputRef.current?.value || null, redirectTo);
+      await createPhotoDocEntry(projectId, blob.url, textInputRef.current?.value || null);
+      router.push(`${redirectTo}?saved=1`);
+      router.refresh();
     } catch {
       setError("Upload fehlgeschlagen. Bitte erneut versuchen.");
       setUploading(false);

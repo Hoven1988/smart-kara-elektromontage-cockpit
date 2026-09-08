@@ -11,13 +11,14 @@ import { requireString, optionalString } from "@/lib/validation";
  * Blob hochgeladen wurde (siehe PhotoUploadForm) - hier landet nur noch
  * die fertige Blob-URL, kein Dateiinhalt mehr, damit wir nicht an das
  * ~4,5-MB-Limit von Server Actions/Functions stoßen.
+ *
+ * Löst absichtlich KEIN redirect() aus (wird direkt aus einem Client-
+ * Event-Handler aufgerufen, nicht aus einem <form action>) - dessen
+ * Redirect-Signal würde sonst vom eigenen try/catch im Client als
+ * Fehler missverstanden. Die Weiterleitung übernimmt PhotoUploadForm
+ * selbst per router.push().
  */
-export async function createPhotoDocEntry(
-  projectId: number,
-  blobUrl: string,
-  text: string | null,
-  redirectTo: string
-) {
+export async function createPhotoDocEntry(projectId: number, blobUrl: string, text: string | null) {
   const user = await requireUser();
 
   await sql`
@@ -27,7 +28,6 @@ export async function createPhotoDocEntry(
 
   revalidatePath(`/auftrag/${projectId}`);
   revalidatePath(`/admin/auftraege/${projectId}`);
-  redirect(`${redirectTo}?saved=1`);
 }
 
 export async function addProjectNote(projectId: number, formData: FormData) {
