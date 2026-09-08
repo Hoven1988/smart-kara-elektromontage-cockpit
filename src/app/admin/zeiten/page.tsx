@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { updateTimeEntry, createTimeEntry } from "@/actions/time";
+import { updateTimeEntry, createTimeEntry, reviewTimeEntryChange } from "@/actions/time";
 import { PrintButton } from "@/components/print-button";
 
 function toDateTimeLabel(value: unknown): string {
@@ -25,8 +25,12 @@ function durationLabel(start: unknown, end: unknown, breakMinutes: number): stri
   return `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 }
 
+function toDateTimeLabelSafe(value: unknown): string {
+  return value ? toDateTimeLabel(value) : "–";
+}
+
 export default async function AdminTimePage() {
-  const [entries, employees, projects] = await Promise.all([
+  const [entries, employees, projects, changeRequests] = await Promise.all([
     sql`
       SELECT t.id, t.started_at, t.ended_at, t.break_minutes, t.note, t.edited_by_admin,
              u.name AS user_name, p.title AS project_title
@@ -38,6 +42,18 @@ export default async function AdminTimePage() {
     `,
     sql`SELECT id, name FROM users WHERE active = true ORDER BY name ASC`,
     sql`SELECT id, title FROM projects ORDER BY title ASC`,
+    sql`
+      SELECT r.id, r.requested_ended_at, r.requested_break_minutes, r.requested_note, r.reason,
+             r.created_at, u.name AS user_name, p.title AS project_title,
+             t.ended_at AS current_ended_at, t.break_minutes AS current_break_minutes,
+             t.note AS current_note
+      FROM time_entry_change_requests r
+      JOIN users u ON u.id = r.requested_by
+      JOIN time_entries t ON t.id = r.time_entry_id
+      JOIN projects p ON p.id = t.project_id
+      WHERE r.status = 'pending'
+      ORDER BY r.created_at ASC
+    `,
   ]);
 
   const timeEntries = entries as unknown as Array<{
@@ -52,6 +68,18 @@ export default async function AdminTimePage() {
   }>;
   const employeeList = employees as unknown as Array<{ id: number; name: string }>;
   const projectList = projects as unknown as Array<{ id: number; title: string }>;
+  const pendingRequests = changeRequests as unknown as Array<{
+    id: number;
+    requested_ended_at: unknown;
+    requested_break_minutes: number | null;
+    requested_note: string | null;
+    reason: string;
+    user_name: string;
+    project_title: string;
+    current_ended_at: unknown;
+    current_break_minutes: number;
+    current_note: string | null;
+  }>;
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
@@ -63,6 +91,48 @@ export default async function AdminTimePage() {
         KARA Cockpit · Zeiterfassung · Stand{" "}
         {new Date().toLocaleDateString("de-DE", { dateStyle: "long" })}
       </p>
+
+      {pendingRequests.length > 0 && (
+        <div className="print:hidden mb-8 max-w-2xl">
+          <h2 className="mb-3 text-lg font-semibold text-silver-light">
+            Offene Änderungsanfragen ({pendingRequests.length})
+          </h2>
+          <ul className="flex flex-col gap-3">
+            {pendingRequests.map((req) => (
+              <li key={req.id} className="rounded border border-copper/40 bg-card p-4 text-sm">
+                <p className="mb-1 font-medium text-silver-light">
+                  {req.user_name} · {req.project_title}
+                </p>
+                <p className="mb-1 text-silver">Begründung: {req.reason}</p>
+                <p className="mb-3 text-xs text-silver">
+                  Ende: {toDateTimeLabelSafe(req.current_ended_at)} →{" "}
+                  {toDateTimeLabelSafe(req.requested_ended_at)} · Pause:{" "}
+                  {req.current_break_minutes} → {req.requested_break_minutes ?? req.current_break_minutes}{" "}
+                  min · Notiz: {req.current_note ?? "–"} → {req.requested_note ?? req.current_note ?? "–"}
+                </p>
+                <div className="flex gap-3">
+                  <form action={reviewTimeEntryChange.bind(null, req.id, "approved")}>
+                    <button
+                      type="submit"
+                      className="rounded bg-copper px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-copper-light"
+                    >
+                      Freigeben
+                    </button>
+                  </form>
+                  <form action={reviewTimeEntryChange.bind(null, req.id, "rejected")}>
+                    <button
+                      type="submit"
+                      className="rounded border border-border px-3 py-1.5 text-xs text-silver transition-colors hover:border-danger hover:text-danger"
+                    >
+                      Ablehnen
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <details className="print:hidden mb-8 max-w-2xl rounded border border-border">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">

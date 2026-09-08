@@ -68,6 +68,22 @@ CREATE TABLE IF NOT EXISTS time_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Änderungswünsche von Monteuren an bereits erfassten Zeiten - werden erst
+-- nach Freigabe durch den Admin auf time_entries übernommen.
+CREATE TABLE IF NOT EXISTS time_entry_change_requests (
+  id SERIAL PRIMARY KEY,
+  time_entry_id INTEGER NOT NULL REFERENCES time_entries(id) ON DELETE CASCADE,
+  requested_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  requested_ended_at TIMESTAMPTZ,
+  requested_break_minutes INTEGER,
+  requested_note TEXT,
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS material_entries (
   id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -113,3 +129,5 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_project ON time_entries(project_id);
 CREATE INDEX IF NOT EXISTS idx_material_entries_project ON material_entries(project_id);
 CREATE INDEX IF NOT EXISTS idx_service_entries_project ON service_entries(project_id);
 CREATE INDEX IF NOT EXISTS idx_doc_entries_project ON doc_entries(project_id);
+CREATE INDEX IF NOT EXISTS idx_change_requests_status ON time_entry_change_requests(status);
+CREATE INDEX IF NOT EXISTS idx_change_requests_entry ON time_entry_change_requests(time_entry_id);
