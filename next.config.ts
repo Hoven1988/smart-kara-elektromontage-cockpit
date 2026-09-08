@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      // Standard-Limit von 1 MB reicht nicht für normale Handyfotos.
+      bodySizeLimit: "15mb",
+    },
+  },
 };
 
 export default nextConfig;
