@@ -1,6 +1,6 @@
 export function DevFooter() {
   return (
-    <footer className="border-t border-border px-6 py-6 text-center text-xs text-silver">
+    <footer className="print:hidden border-t border-border px-6 py-6 text-center text-xs text-silver">
       <p className="mb-1">
         Entwickelt von{" "}
         <a

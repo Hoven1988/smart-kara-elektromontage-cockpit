@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db";
 import { updateTimeEntry, createTimeEntry } from "@/actions/time";
+import { PrintButton } from "@/components/print-button";
 
 function toDateTimeLabel(value: unknown): string {
   if (!value) return "";
@@ -54,9 +55,16 @@ export default async function AdminTimePage() {
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
-      <h1 className="mb-6 text-xl font-semibold text-silver-light">Zeiten</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-silver-light">Zeiten</h1>
+        <PrintButton label="Als PDF speichern" />
+      </div>
+      <p className="mb-6 hidden text-sm text-silver print:block">
+        KARA Cockpit · Zeiterfassung · Stand{" "}
+        {new Date().toLocaleDateString("de-DE", { dateStyle: "long" })}
+      </p>
 
-      <details className="mb-8 max-w-2xl rounded border border-border">
+      <details className="print:hidden mb-8 max-w-2xl rounded border border-border">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-silver-light">
           Zeit manuell erfassen
         </summary>
@@ -206,8 +214,11 @@ export default async function AdminTimePage() {
                       name="ended_at"
                       type="datetime-local"
                       defaultValue={toDateTimeInputValue(entry.ended_at)}
-                      className="w-44 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
+                      className="print:hidden w-44 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
                     />
+                    <span className="hidden text-silver print:inline">
+                      {toDateTimeLabel(entry.ended_at)}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <input
@@ -216,18 +227,20 @@ export default async function AdminTimePage() {
                       type="number"
                       min={0}
                       defaultValue={entry.break_minutes}
-                      className="w-16 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
+                      className="print:hidden w-16 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
                     />
+                    <span className="hidden text-silver print:inline">{entry.break_minutes}</span>
                   </td>
                   <td className="px-4 py-3">
                     <input
                       form={`edit-${entry.id}`}
                       name="note"
                       defaultValue={entry.note ?? ""}
-                      className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
+                      className="print:hidden w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
                     />
+                    <span className="hidden text-silver print:inline">{entry.note ?? "–"}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 print:hidden">
                     <form id={`edit-${entry.id}`} action={updateTimeEntry.bind(null, entry.id)} />
                     <button
                       form={`edit-${entry.id}`}

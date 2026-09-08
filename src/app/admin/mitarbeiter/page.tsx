@@ -54,7 +54,7 @@ export default async function EmployeesPage() {
                   {employee.role === "admin" ? "Admin" : "Monteur"}
                 </td>
                 <td className="px-4 py-3 text-silver">
-                  {employee.active ? "Aktiv" : "Deaktiviert"}
+                  {employee.active ? "Aktiv" : "Archiviert"}
                 </td>
               </tr>
             ))}

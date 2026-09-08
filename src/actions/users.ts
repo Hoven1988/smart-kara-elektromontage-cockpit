@@ -33,6 +33,29 @@ export async function setEmployeeActive(id: number, active: boolean) {
   redirect(`/admin/mitarbeiter/${id}?saved=1`);
 }
 
+export async function deleteEmployee(id: number) {
+  await requireAdmin();
+
+  const [times, assignments, material, service, docs] = await Promise.all([
+    sql`SELECT 1 FROM time_entries WHERE user_id = ${id} LIMIT 1`,
+    sql`SELECT 1 FROM assignments WHERE user_id = ${id} LIMIT 1`,
+    sql`SELECT 1 FROM material_entries WHERE user_id = ${id} LIMIT 1`,
+    sql`SELECT 1 FROM service_entries WHERE user_id = ${id} LIMIT 1`,
+    sql`SELECT 1 FROM doc_entries WHERE user_id = ${id} LIMIT 1`,
+  ]);
+  const hasHistory = [times, assignments, material, service, docs].some(
+    (rows) => (rows as unknown as unknown[]).length > 0
+  );
+
+  if (hasHistory) {
+    redirect(`/admin/mitarbeiter/${id}?error=has-history`);
+  }
+
+  await sql`DELETE FROM users WHERE id = ${id}`;
+  revalidatePath("/admin/mitarbeiter");
+  redirect("/admin/mitarbeiter?saved=1");
+}
+
 export async function resetEmployeePassword(id: number, formData: FormData) {
   await requireAdmin();
   const password = requireString(formData.get("password"), "Neues Passwort");
