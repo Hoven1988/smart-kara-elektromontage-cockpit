@@ -309,8 +309,14 @@ export default async function MonteurProjectPage({
         )}
       </div>
 
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">Fotos &amp; Notizen</h2>
+      <div className="has-[:checked]:[&_.doc-photo]:hidden has-[:checked]:[&_.photo-toggle-label]:border-copper has-[:checked]:[&_.photo-toggle-label]:text-copper-light">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-silver-light">Fotos &amp; Notizen</h2>
+          <label className="photo-toggle-label flex cursor-pointer select-none items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-silver transition-colors">
+            <input type="checkbox" className="sr-only" />
+            Nur Details (ohne Bilder)
+          </label>
+        </div>
 
         <div className="mb-4 flex flex-col gap-6 sm:flex-row">
           <div className="flex-1">
@@ -346,7 +352,7 @@ export default async function MonteurProjectPage({
                     alt={entry.text ?? "Baustellenfoto"}
                     width={480}
                     height={360}
-                    className="mb-2 h-auto w-full max-w-xs rounded"
+                    className="doc-photo mb-2 h-auto w-full max-w-xs rounded"
                   />
                 )}
                 {entry.text && <p className="text-silver-light">{entry.text}</p>}

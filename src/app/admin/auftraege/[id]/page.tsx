@@ -213,7 +213,7 @@ export default async function ProjectDetailPage({
               alt={entry.text ?? "Baustellenfoto"}
               width={480}
               height={360}
-              className="mt-2 mb-2 h-auto w-full max-w-xs rounded"
+              className="doc-photo mt-2 mb-2 h-auto w-full max-w-xs rounded"
             />
           )}
           {entry.text && <span className="text-silver-light">{entry.text}</span>}{" "}
@@ -364,8 +364,14 @@ export default async function ProjectDetailPage({
         </div>
       </div>
 
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">Akte / Verlauf</h2>
+      <div className="has-[:checked]:[&_.doc-photo]:hidden has-[:checked]:[&_.photo-toggle-label]:border-copper has-[:checked]:[&_.photo-toggle-label]:text-copper-light">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-silver-light">Akte / Verlauf</h2>
+          <label className="photo-toggle-label flex cursor-pointer select-none items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-silver transition-colors">
+            <input type="checkbox" className="sr-only" />
+            Nur Details (ohne Bilder)
+          </label>
+        </div>
         {timeline.length === 0 ? (
           <p className="text-sm text-silver">
             Noch nichts erfasst – Zeiten, Arbeit, Material und Fotos erscheinen hier chronologisch.
