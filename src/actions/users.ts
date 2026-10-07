@@ -18,10 +18,17 @@ export async function createEmployee(formData: FormData) {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  await sql`
-    INSERT INTO users (name, username, password_hash, role)
-    VALUES (${name}, ${username}, ${passwordHash}, ${role})
-  `;
+  try {
+    await sql`
+      INSERT INTO users (name, username, password_hash, role)
+      VALUES (${name}, ${username}, ${passwordHash}, ${role})
+    `;
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+      redirect("/admin/mitarbeiter/neu?error=duplicate-username");
+    }
+    throw err;
+  }
 
   revalidatePath("/admin/mitarbeiter");
 }

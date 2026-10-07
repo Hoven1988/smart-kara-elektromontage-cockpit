@@ -7,10 +7,20 @@ async function createAndRedirect(formData: FormData) {
   redirect("/admin/mitarbeiter?saved=1");
 }
 
-export default function NewEmployeePage() {
+export default async function NewEmployeePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
       <h1 className="mb-6 text-xl font-semibold text-silver-light">Neuer Mitarbeiter</h1>
+      {error === "duplicate-username" && (
+        <p className="mb-4 max-w-lg rounded border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+          Dieser Benutzername ist bereits vergeben. Bitte einen anderen wählen.
+        </p>
+      )}
       <form action={createAndRedirect} className="flex max-w-lg flex-col gap-4">
         <div>
           <label className="mb-1 block text-sm text-silver" htmlFor="name">
