@@ -34,6 +34,12 @@ export default async function MonteurLayout({ children }: { children: React.Reac
         >
           Meine Zeiten
         </Link>
+        <Link
+          href="/urlaub"
+          className="flex-1 border-l border-border px-4 py-3 text-center text-sm text-silver hover:text-silver-light"
+        >
+          Urlaub
+        </Link>
       </nav>
       <SaveToast />
     </div>

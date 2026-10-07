@@ -61,7 +61,7 @@ export default async function AdminDashboard() {
       SELECT t.id, u.name AS user_name, p.id AS project_id, p.title AS project_title, t.started_at
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
-      JOIN projects p ON p.id = t.project_id
+      LEFT JOIN projects p ON p.id = t.project_id
       WHERE t.ended_at IS NULL
       ORDER BY t.started_at ASC
     `,
@@ -69,7 +69,7 @@ export default async function AdminDashboard() {
       SELECT t.id, t.started_at, u.name AS user_name, p.id AS project_id, p.title AS project_title
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
-      JOIN projects p ON p.id = t.project_id
+      LEFT JOIN projects p ON p.id = t.project_id
       ORDER BY t.started_at DESC
       LIMIT 20
     `,
@@ -112,8 +112,8 @@ export default async function AdminDashboard() {
   const active = clockedIn as unknown as Array<{
     id: number;
     user_name: string;
-    project_id: number;
-    project_title: string;
+    project_id: number | null;
+    project_title: string | null;
     started_at: unknown;
   }>;
 
@@ -123,8 +123,8 @@ export default async function AdminDashboard() {
         id: number;
         started_at: unknown;
         user_name: string;
-        project_id: number;
-        project_title: string;
+        project_id: number | null;
+        project_title: string | null;
       }>
     ).map((e) => ({
       key: `time-${e.id}`,
@@ -135,9 +135,13 @@ export default async function AdminDashboard() {
           <span className="text-silver-light">{e.user_name}</span>{" "}
           <span className="text-silver">
             hat Zeit erfasst –{" "}
-            <Link href={`/admin/auftraege/${e.project_id}`} className="hover:text-copper-light">
-              {e.project_title}
-            </Link>{" "}
+            {e.project_id ? (
+              <Link href={`/admin/auftraege/${e.project_id}`} className="hover:text-copper-light">
+                {e.project_title}
+              </Link>
+            ) : (
+              "Allgemein"
+            )}{" "}
             · {toDateTimeLabel(e.started_at)}
           </span>
         </>
@@ -265,9 +269,16 @@ export default async function AdminDashboard() {
                   <span className="font-medium text-silver-light">{entry.user_name}</span>{" "}
                   <span className="text-silver">
                     –{" "}
-                    <Link href={`/admin/auftraege/${entry.project_id}`} className="hover:text-copper-light">
-                      {entry.project_title}
-                    </Link>{" "}
+                    {entry.project_id ? (
+                      <Link
+                        href={`/admin/auftraege/${entry.project_id}`}
+                        className="hover:text-copper-light"
+                      >
+                        {entry.project_title}
+                      </Link>
+                    ) : (
+                      "Allgemein"
+                    )}{" "}
                     · seit {toTimeSinceLabel(entry.started_at)}
                   </span>
                 </li>

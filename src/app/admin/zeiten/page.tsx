@@ -36,7 +36,7 @@ export default async function AdminTimePage() {
              u.name AS user_name, p.title AS project_title
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
-      JOIN projects p ON p.id = t.project_id
+      LEFT JOIN projects p ON p.id = t.project_id
       ORDER BY t.started_at DESC
       LIMIT 200
     `,
@@ -50,7 +50,7 @@ export default async function AdminTimePage() {
       FROM time_entry_change_requests r
       JOIN users u ON u.id = r.requested_by
       JOIN time_entries t ON t.id = r.time_entry_id
-      JOIN projects p ON p.id = t.project_id
+      LEFT JOIN projects p ON p.id = t.project_id
       WHERE r.status = 'pending'
       ORDER BY r.created_at ASC
     `,
@@ -64,7 +64,7 @@ export default async function AdminTimePage() {
     note: string | null;
     edited_by_admin: boolean;
     user_name: string;
-    project_title: string;
+    project_title: string | null;
   }>;
   const employeeList = employees as unknown as Array<{ id: number; name: string }>;
   const projectList = projects as unknown as Array<{ id: number; title: string }>;
@@ -75,7 +75,7 @@ export default async function AdminTimePage() {
     requested_note: string | null;
     reason: string;
     user_name: string;
-    project_title: string;
+    project_title: string | null;
     current_ended_at: unknown;
     current_break_minutes: number;
     current_note: string | null;
@@ -101,7 +101,7 @@ export default async function AdminTimePage() {
             {pendingRequests.map((req) => (
               <li key={req.id} className="rounded border border-copper/40 bg-card p-4 text-sm">
                 <p className="mb-1 font-medium text-silver-light">
-                  {req.user_name} · {req.project_title}
+                  {req.user_name} · {req.project_title ?? "Allgemein"}
                 </p>
                 <p className="mb-1 text-silver">Begründung: {req.reason}</p>
                 <p className="mb-3 text-xs text-silver">
@@ -165,10 +165,9 @@ export default async function AdminTimePage() {
               <select
                 id="project_id"
                 name="project_id"
-                required
                 className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
               >
-                <option value="">– Auswählen –</option>
+                <option value="">Allgemein (kein Auftrag)</option>
                 {projectList.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.title}
@@ -270,7 +269,7 @@ export default async function AdminTimePage() {
               {timeEntries.map((entry) => (
                 <tr key={entry.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 text-silver-light">{entry.user_name}</td>
-                  <td className="px-4 py-3 text-silver-light">{entry.project_title}</td>
+                  <td className="px-4 py-3 text-silver-light">{entry.project_title ?? "Allgemein"}</td>
                   <td className="px-4 py-3 text-silver">{toDateTimeLabel(entry.started_at)}</td>
                   <td className="px-4 py-3 text-silver">
                     {durationLabel(entry.started_at, entry.ended_at, entry.break_minutes)}

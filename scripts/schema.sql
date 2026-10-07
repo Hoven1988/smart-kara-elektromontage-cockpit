@@ -16,8 +16,11 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('admin', 'monteur')),
   active BOOLEAN NOT NULL DEFAULT true,
+  vacation_days_per_year NUMERIC(5,1) NOT NULL DEFAULT 30,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS vacation_days_per_year NUMERIC(5,1) NOT NULL DEFAULT 30;
 
 CREATE TABLE IF NOT EXISTS customers (
   id SERIAL PRIMARY KEY,
@@ -56,10 +59,12 @@ CREATE TABLE IF NOT EXISTS assignments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- project_id ist absichtlich NULLable: allgemeines Ein-/Ausstempeln (Büro,
+-- Fahrzeit, ...) ohne Auftragsbezug landet hier mit project_id = NULL.
 CREATE TABLE IF NOT EXISTS time_entries (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
   started_at TIMESTAMPTZ NOT NULL,
   ended_at TIMESTAMPTZ,
   break_minutes INTEGER NOT NULL DEFAULT 0,
@@ -67,6 +72,8 @@ CREATE TABLE IF NOT EXISTS time_entries (
   edited_by_admin BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE time_entries ALTER COLUMN project_id DROP NOT NULL;
 
 -- Änderungswünsche von Monteuren an bereits erfassten Zeiten - werden erst
 -- nach Freigabe durch den Admin auf time_entries übernommen.
@@ -114,6 +121,22 @@ CREATE TABLE IF NOT EXISTS doc_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Urlaubsanträge: Mitarbeiter beantragt einen Zeitraum, Admin genehmigt
+-- oder lehnt ab. "days" sind Werktage (Mo-Fr) im Zeitraum, berechnet bei
+-- der Antragstellung.
+CREATE TABLE IF NOT EXISTS leave_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  days NUMERIC(5,1) NOT NULL,
+  note TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -131,3 +154,5 @@ CREATE INDEX IF NOT EXISTS idx_service_entries_project ON service_entries(projec
 CREATE INDEX IF NOT EXISTS idx_doc_entries_project ON doc_entries(project_id);
 CREATE INDEX IF NOT EXISTS idx_change_requests_status ON time_entry_change_requests(status);
 CREATE INDEX IF NOT EXISTS idx_change_requests_entry ON time_entry_change_requests(time_entry_id);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_user ON leave_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests(status);

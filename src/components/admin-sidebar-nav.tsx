@@ -8,6 +8,7 @@ import { LogoutButton } from "@/components/logout-button";
 const FLAT_ITEMS = [
   { href: "/admin/planung", label: "Einsatzplanung" },
   { href: "/admin/zeiten", label: "Zeiten" },
+  { href: "/admin/urlaub", label: "Urlaub" },
   { href: "/admin/mitarbeiter", label: "Mitarbeiter" },
   { href: "/admin/einstellungen", label: "Einstellungen" },
 ];

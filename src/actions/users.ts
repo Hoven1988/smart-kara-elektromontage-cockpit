@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { requireString } from "@/lib/validation";
+import { requireString, optionalString } from "@/lib/validation";
 
 export async function createEmployee(formData: FormData) {
   await requireAdmin();
@@ -15,13 +15,15 @@ export async function createEmployee(formData: FormData) {
   const password = requireString(formData.get("password"), "Passwort");
   const roleRaw = formData.get("role");
   const role = roleRaw === "admin" ? "admin" : "monteur";
+  const vacationDaysRaw = optionalString(formData.get("vacation_days_per_year"));
+  const vacationDays = vacationDaysRaw ? Number(vacationDaysRaw) : 30;
 
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
     await sql`
-      INSERT INTO users (name, username, password_hash, role)
-      VALUES (${name}, ${username}, ${passwordHash}, ${role})
+      INSERT INTO users (name, username, password_hash, role, vacation_days_per_year)
+      VALUES (${name}, ${username}, ${passwordHash}, ${role}, ${Number.isFinite(vacationDays) ? vacationDays : 30})
     `;
   } catch (err) {
     if (err && typeof err === "object" && "code" in err && err.code === "23505") {
@@ -68,6 +70,17 @@ export async function resetEmployeePassword(id: number, formData: FormData) {
   const password = requireString(formData.get("password"), "Neues Passwort");
   const passwordHash = await bcrypt.hash(password, 10);
   await sql`UPDATE users SET password_hash = ${passwordHash} WHERE id = ${id}`;
+  revalidatePath("/admin/mitarbeiter");
+  redirect(`/admin/mitarbeiter/${id}?saved=1`);
+}
+
+export async function updateVacationDays(id: number, formData: FormData) {
+  await requireAdmin();
+  const vacationDays = Number(requireString(formData.get("vacation_days_per_year"), "Urlaubsanspruch"));
+  if (!Number.isFinite(vacationDays) || vacationDays < 0) {
+    throw new Error("Ungültiger Urlaubsanspruch.");
+  }
+  await sql`UPDATE users SET vacation_days_per_year = ${vacationDays} WHERE id = ${id}`;
   revalidatePath("/admin/mitarbeiter");
   redirect(`/admin/mitarbeiter/${id}?saved=1`);
 }

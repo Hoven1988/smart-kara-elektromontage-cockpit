@@ -39,7 +39,7 @@ export default async function MyTimePage() {
     sql`
       SELECT t.id, t.started_at, t.ended_at, t.break_minutes, t.note, p.title AS project_title
       FROM time_entries t
-      JOIN projects p ON p.id = t.project_id
+      LEFT JOIN projects p ON p.id = t.project_id
       WHERE t.user_id = ${user.userId}
       ORDER BY t.started_at DESC
     `,
@@ -57,7 +57,7 @@ export default async function MyTimePage() {
     ended_at: unknown;
     break_minutes: number;
     note: string | null;
-    project_title: string;
+    project_title: string | null;
   }>;
 
   const latestRequestByEntry = new Map<number, string>();
@@ -78,7 +78,9 @@ export default async function MyTimePage() {
             return (
               <li key={entry.id} className="rounded border border-border p-4 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-medium text-silver-light">{entry.project_title}</span>
+                  <span className="font-medium text-silver-light">
+                    {entry.project_title ?? "Allgemein"}
+                  </span>
                   <span className="text-silver">
                     {durationLabel(entry.started_at, entry.ended_at, entry.break_minutes)}
                   </span>

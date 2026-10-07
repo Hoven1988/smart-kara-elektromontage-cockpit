@@ -63,11 +63,25 @@ export default async function MonteurProjectPage({
     }
   }
 
+  // Ein Monteur hat laut clockIn() höchstens einen offenen Eintrag insgesamt
+  // (nicht pro Projekt) - daher hier global prüfen, sonst könnte "Einstempeln"
+  // angezeigt werden, obwohl er anderswo bereits eingestempelt ist.
   const openEntryRows = await sql`
-    SELECT id, started_at FROM time_entries
-    WHERE user_id = ${user.userId} AND project_id = ${projectId} AND ended_at IS NULL
+    SELECT t.id, t.started_at, t.project_id, p.title AS project_title
+    FROM time_entries t
+    LEFT JOIN projects p ON p.id = t.project_id
+    WHERE t.user_id = ${user.userId} AND t.ended_at IS NULL
   `;
-  const openEntry = (openEntryRows as unknown as Array<{ id: number; started_at: unknown }>)[0];
+  const openEntry = (
+    openEntryRows as unknown as Array<{
+      id: number;
+      started_at: unknown;
+      project_id: number | null;
+      project_title: string | null;
+    }>
+  )[0];
+  const openEntryHere = openEntry?.project_id === projectId;
+  const openEntryElsewhere = openEntry && !openEntryHere;
 
   const [ownEntriesRows, serviceRows, materialRows, docRows] = await Promise.all([
     sql`
@@ -144,10 +158,18 @@ export default async function MonteurProjectPage({
         )}
 
         <div className="mb-8">
-          {openEntry ? (
+          {openEntryElsewhere ? (
+            <p className="text-sm text-silver">
+              Du bist aktuell bei{" "}
+              <span className="text-silver-light">
+                {openEntry!.project_title ?? "Allgemein"}
+              </span>{" "}
+              eingestempelt. Zuerst dort ausstempeln, um hier einzustempeln.
+            </p>
+          ) : openEntryHere ? (
             <form action={clockOut.bind(null, projectId)} className="flex max-w-sm flex-col gap-3">
               <p className="text-sm text-silver">
-                Eingestempelt seit {toDateTimeLabel(openEntry.started_at)}
+                Eingestempelt seit {toDateTimeLabel(openEntry!.started_at)}
               </p>
               <div>
                 <label className="mb-1 block text-sm text-silver" htmlFor="break_minutes">

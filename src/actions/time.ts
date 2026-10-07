@@ -6,7 +6,7 @@ import { sql } from "@/lib/db";
 import { requireUser, requireAdmin } from "@/lib/auth";
 import { optionalString, requireString } from "@/lib/validation";
 
-export async function clockIn(projectId: number) {
+export async function clockIn(projectId: number | null) {
   const user = await requireUser();
 
   const openEntries = await sql`
@@ -22,36 +22,41 @@ export async function clockIn(projectId: number) {
     VALUES (${user.userId}, ${projectId}, now())
   `;
 
-  revalidatePath(`/auftrag/${projectId}`);
+  const returnTo = projectId ? `/auftrag/${projectId}` : "/";
+  if (projectId) revalidatePath(`/auftrag/${projectId}`);
   revalidatePath("/");
   revalidatePath("/zeiten");
-  redirect(`/auftrag/${projectId}?saved=1`);
+  redirect(`${returnTo}?saved=1`);
 }
 
-export async function clockOut(projectId: number, formData: FormData) {
+export async function clockOut(projectId: number | null, formData: FormData) {
   const user = await requireUser();
 
   const breakMinutesRaw = optionalString(formData.get("break_minutes"));
   const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
   const note = optionalString(formData.get("note"));
 
+  // Ein Monteur hat laut clockIn() immer höchstens einen offenen Eintrag,
+  // daher reicht der Filter auf user_id + offen - unabhängig vom Projekt.
   await sql`
     UPDATE time_entries
     SET ended_at = now(), break_minutes = ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, note = ${note}
-    WHERE user_id = ${user.userId} AND project_id = ${projectId} AND ended_at IS NULL
+    WHERE user_id = ${user.userId} AND ended_at IS NULL
   `;
 
-  revalidatePath(`/auftrag/${projectId}`);
+  const returnTo = projectId ? `/auftrag/${projectId}` : "/";
+  if (projectId) revalidatePath(`/auftrag/${projectId}`);
   revalidatePath("/");
   revalidatePath("/zeiten");
-  redirect(`/auftrag/${projectId}?saved=1`);
+  redirect(`${returnTo}?saved=1`);
 }
 
 export async function createTimeEntry(formData: FormData) {
   await requireAdmin();
 
   const userId = Number(requireString(formData.get("user_id"), "Mitarbeiter"));
-  const projectId = Number(requireString(formData.get("project_id"), "Auftrag"));
+  const projectIdRaw = optionalString(formData.get("project_id"));
+  const projectId = projectIdRaw ? Number(projectIdRaw) : null;
   const date = requireString(formData.get("date"), "Datum");
   const startTime = requireString(formData.get("start_time"), "Von");
   const endTime = optionalString(formData.get("end_time"));
@@ -59,7 +64,7 @@ export async function createTimeEntry(formData: FormData) {
   const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
   const note = optionalString(formData.get("note"));
 
-  if (!Number.isInteger(userId) || !Number.isInteger(projectId)) {
+  if (!Number.isInteger(userId) || (projectId !== null && !Number.isInteger(projectId))) {
     throw new Error("Ungültiger Mitarbeiter oder Auftrag.");
   }
 

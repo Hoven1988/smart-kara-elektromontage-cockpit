@@ -70,6 +70,20 @@ export default async function NewEmployeePage({
             <option value="admin">Admin</option>
           </select>
         </div>
+        <div>
+          <label className="mb-1 block text-sm text-silver" htmlFor="vacation_days_per_year">
+            Urlaubsanspruch (Tage/Jahr)
+          </label>
+          <input
+            id="vacation_days_per_year"
+            name="vacation_days_per_year"
+            type="number"
+            min={0}
+            step={0.5}
+            defaultValue={30}
+            className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+          />
+        </div>
         <button
           type="submit"
           className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
