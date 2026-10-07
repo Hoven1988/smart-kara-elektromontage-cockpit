@@ -51,6 +51,38 @@ export async function clockOut(projectId: number | null, formData: FormData) {
   redirect(`${returnTo}?saved=1`);
 }
 
+export async function createOwnTimeEntry(formData: FormData) {
+  const user = await requireUser();
+
+  const projectIdRaw = optionalString(formData.get("project_id"));
+  const projectId = projectIdRaw ? Number(projectIdRaw) : null;
+  const date = requireString(formData.get("date"), "Datum");
+  const startTime = requireString(formData.get("start_time"), "Von");
+  const endTime = requireString(formData.get("end_time"), "Bis");
+  const breakMinutesRaw = optionalString(formData.get("break_minutes"));
+  const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
+  const note = optionalString(formData.get("note"));
+
+  if (projectId !== null && !Number.isInteger(projectId)) {
+    throw new Error("Ungültiger Auftrag.");
+  }
+
+  const startedAt = new Date(`${date}T${startTime}`);
+  const endedAt = new Date(`${date}T${endTime}`);
+  if (endedAt < startedAt) {
+    throw new Error("Das Ende darf nicht vor dem Beginn liegen.");
+  }
+
+  await sql`
+    INSERT INTO time_entries (user_id, project_id, started_at, ended_at, break_minutes, note)
+    VALUES (${user.userId}, ${projectId}, ${startedAt}, ${endedAt}, ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, ${note})
+  `;
+
+  revalidatePath("/zeiten");
+  revalidatePath("/admin/zeiten");
+  redirect("/zeiten?saved=1");
+}
+
 export async function createTimeEntry(formData: FormData) {
   await requireAdmin();
 

@@ -57,7 +57,7 @@ export default async function MonteurHome() {
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
-      <div className="mb-8">
+      <div className="mb-8 md:hidden">
         {openEntry ? (
           <form
             action={clockOut.bind(null, openEntry.project_id)}

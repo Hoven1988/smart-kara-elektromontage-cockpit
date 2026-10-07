@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { requestTimeEntryChange } from "@/actions/time";
@@ -67,7 +68,15 @@ export default async function MyTimePage() {
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
-      <h1 className="mb-6 text-xl font-semibold text-silver-light">Meine Zeiten</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-silver-light">Meine Zeiten</h1>
+        <Link
+          href="/zeiten/neu"
+          className="rounded bg-copper px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-copper-light"
+        >
+          + Zeit eintragen
+        </Link>
+      </div>
       {entries.length === 0 ? (
         <p className="text-sm text-silver">Noch keine Zeiten erfasst.</p>
       ) : (
