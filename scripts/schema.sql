@@ -137,6 +137,19 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Eingaben für die Gewerbesteuer-Schätzung je Jahr. gewinn_override
+-- überschreibt den aus Lexware abgeleiteten Umsatz/Ausgaben-Schätzwert,
+-- sobald der tatsächliche Gewinn (z.B. aus der Lexware-BWA oder vom
+-- Steuerberater) bekannt ist. hebesatz ist gemeinde- und jahresspezifisch
+-- und muss daher manuell gepflegt werden.
+CREATE TABLE IF NOT EXISTS gewerbesteuer_settings (
+  year INTEGER PRIMARY KEY,
+  gewinn_override NUMERIC(12,2),
+  freibetrag NUMERIC(12,2) NOT NULL DEFAULT 24500,
+  hebesatz NUMERIC(6,2),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

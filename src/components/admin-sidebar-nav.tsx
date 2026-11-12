@@ -10,6 +10,7 @@ const FLAT_ITEMS = [
   { href: "/admin/zeiten", label: "Zeiten" },
   { href: "/admin/urlaub", label: "Urlaub" },
   { href: "/admin/mitarbeiter", label: "Mitarbeiter" },
+  { href: "/admin/gewerbesteuer", label: "Gewerbesteuer" },
   { href: "/admin/einstellungen", label: "Einstellungen" },
 ];
 
