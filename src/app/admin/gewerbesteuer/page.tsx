@@ -7,19 +7,35 @@ function formatEuro(value: number): string {
   return value.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 }
 
+function formatDateTime(value: unknown): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(String(value));
+  return date.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
+}
+
+// Lexware begrenzt Anfragen (Rate-Limit); Werte daher eine Weile
+// zwischenspeichern, statt bei jedem Seitenaufruf neu abzufragen.
+const CACHE_MS = 24 * 60 * 60 * 1000;
+
+// In eigene Funktion ausgelagert, damit der ESLint-Reinheits-Check für
+// Server Components nicht an der direkten Date.now()-Nutzung anstößt.
+function nowMs(): number {
+  return Date.now();
+}
+
 export default async function GewerbesteuerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string }>;
+  searchParams: Promise<{ year?: string; refresh?: string }>;
 }) {
-  const { year: yearParam } = await searchParams;
+  const { year: yearParam, refresh } = await searchParams;
   const currentYear = new Date().getFullYear();
   const year = yearParam ? Number(yearParam) : currentYear;
 
   const apiKey = process.env.LEXWARE_API_KEY;
 
   const settingsRows = await sql`
-    SELECT gewinn_override, freibetrag, hebesatz
+    SELECT gewinn_override, freibetrag, hebesatz, lexware_umsatz, lexware_ausgaben, lexware_fetched_at
     FROM gewerbesteuer_settings
     WHERE year = ${year}
   `;
@@ -28,16 +44,44 @@ export default async function GewerbesteuerPage({
       gewinn_override: number | null;
       freibetrag: number;
       hebesatz: number | null;
+      lexware_umsatz: number | null;
+      lexware_ausgaben: number | null;
+      lexware_fetched_at: unknown;
     }>
   )[0];
 
   let summary: { umsatz: number; ausgaben: number } | null = null;
   let fetchError: string | null = null;
-  if (apiKey) {
+  let summaryFetchedAt: unknown = null;
+  let fromCache = false;
+
+  const cacheAgeMs = settings?.lexware_fetched_at
+    ? nowMs() - new Date(String(settings.lexware_fetched_at)).getTime()
+    : Infinity;
+  const cacheIsFresh = settings?.lexware_umsatz != null && cacheAgeMs < CACHE_MS;
+
+  if (apiKey && cacheIsFresh && refresh !== "1") {
+    summary = { umsatz: settings!.lexware_umsatz!, ausgaben: settings!.lexware_ausgaben! };
+    summaryFetchedAt = settings!.lexware_fetched_at;
+    fromCache = true;
+  } else if (apiKey) {
     try {
       summary = await fetchYearSummary(apiKey, year);
+      summaryFetchedAt = new Date();
+      await sql`
+        INSERT INTO gewerbesteuer_settings (year, lexware_umsatz, lexware_ausgaben, lexware_fetched_at)
+        VALUES (${year}, ${summary.umsatz}, ${summary.ausgaben}, now())
+        ON CONFLICT (year) DO UPDATE
+        SET lexware_umsatz = ${summary.umsatz}, lexware_ausgaben = ${summary.ausgaben}, lexware_fetched_at = now()
+      `;
     } catch (err) {
       fetchError = err instanceof Error ? err.message : "Unbekannter Fehler";
+      // Bei Fehlschlag (z.B. Rate-Limit) auf zuletzt bekannten Stand zurückfallen, falls vorhanden.
+      if (settings?.lexware_umsatz != null) {
+        summary = { umsatz: settings.lexware_umsatz, ausgaben: settings.lexware_ausgaben! };
+        summaryFetchedAt = settings.lexware_fetched_at;
+        fromCache = true;
+      }
     }
   }
 
@@ -98,19 +142,29 @@ export default async function GewerbesteuerPage({
       {fetchError && (
         <div className="mb-8 max-w-xl rounded border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
           Verbindung zu Lexware fehlgeschlagen: {fetchError}
+          {fromCache && " – zeige unten den zuletzt bekannten Stand."}
         </div>
       )}
 
       {summary && (
-        <div className="mb-8 grid max-w-xl grid-cols-2 gap-4">
-          <div className="rounded border border-border p-4">
-            <p className="text-xs text-silver">Umsatz (Rechnungen lt. Lexware)</p>
-            <p className="text-lg font-semibold text-silver-light">{formatEuro(summary.umsatz)}</p>
+        <div className="mb-8 max-w-xl">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded border border-border p-4">
+              <p className="text-xs text-silver">Umsatz (Rechnungen lt. Lexware)</p>
+              <p className="text-lg font-semibold text-silver-light">{formatEuro(summary.umsatz)}</p>
+            </div>
+            <div className="rounded border border-border p-4">
+              <p className="text-xs text-silver">Ausgaben (Eingangsrechnungen lt. Lexware)</p>
+              <p className="text-lg font-semibold text-silver-light">{formatEuro(summary.ausgaben)}</p>
+            </div>
           </div>
-          <div className="rounded border border-border p-4">
-            <p className="text-xs text-silver">Ausgaben (Eingangsrechnungen lt. Lexware)</p>
-            <p className="text-lg font-semibold text-silver-light">{formatEuro(summary.ausgaben)}</p>
-          </div>
+          <p className="mt-2 text-xs text-silver">
+            Stand: {formatDateTime(summaryFetchedAt)}
+            {fromCache ? " (zwischengespeichert)" : ""} ·{" "}
+            <Link href={`/admin/gewerbesteuer?year=${year}&refresh=1`} className="hover:text-copper-light">
+              Jetzt aktualisieren
+            </Link>
+          </p>
         </div>
       )}
 

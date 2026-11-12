@@ -142,13 +142,23 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 -- sobald der tatsächliche Gewinn (z.B. aus der Lexware-BWA oder vom
 -- Steuerberater) bekannt ist. hebesatz ist gemeinde- und jahresspezifisch
 -- und muss daher manuell gepflegt werden.
+-- lexware_* Spalten cachen das letzte erfolgreiche Ergebnis der
+-- Lexware-Abfrage, damit nicht bei jedem Seitenaufruf neu abgefragt werden
+-- muss (schont das Rate-Limit der Lexware-API, siehe lib/lexware.ts).
 CREATE TABLE IF NOT EXISTS gewerbesteuer_settings (
   year INTEGER PRIMARY KEY,
   gewinn_override NUMERIC(12,2),
   freibetrag NUMERIC(12,2) NOT NULL DEFAULT 24500,
   hebesatz NUMERIC(6,2),
+  lexware_umsatz NUMERIC(12,2),
+  lexware_ausgaben NUMERIC(12,2),
+  lexware_fetched_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_umsatz NUMERIC(12,2);
+ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_ausgaben NUMERIC(12,2);
+ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_fetched_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id SERIAL PRIMARY KEY,
