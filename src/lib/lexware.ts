@@ -75,12 +75,12 @@ export async function fetchYearSummary(apiKey: string, year: number): Promise<Ye
   const dateFrom = `${year}-01-01`;
   const dateTo = `${year}-12-31`;
 
-  const [salesInvoices, salesCredits, purchaseInvoices, purchaseCredits] = await Promise.all([
-    sumVoucherType(apiKey, "salesinvoice", dateFrom, dateTo),
-    sumVoucherType(apiKey, "salescreditnote", dateFrom, dateTo),
-    sumVoucherType(apiKey, "purchaseinvoice", dateFrom, dateTo),
-    sumVoucherType(apiKey, "purchasecreditnote", dateFrom, dateTo),
-  ]);
+  // Nacheinander statt parallel, um das Rate-Limit der Lexware-API nicht zu
+  // überschreiten (429 Too Many Requests bei zu vielen gleichzeitigen Anfragen).
+  const salesInvoices = await sumVoucherType(apiKey, "salesinvoice", dateFrom, dateTo);
+  const salesCredits = await sumVoucherType(apiKey, "salescreditnote", dateFrom, dateTo);
+  const purchaseInvoices = await sumVoucherType(apiKey, "purchaseinvoice", dateFrom, dateTo);
+  const purchaseCredits = await sumVoucherType(apiKey, "purchasecreditnote", dateFrom, dateTo);
 
   return {
     umsatz: salesInvoices - salesCredits,
