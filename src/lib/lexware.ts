@@ -34,7 +34,11 @@ async function fetchVoucherPage(
 
   if (!res.ok) {
     const bodyText = await res.text().catch(() => "");
-    throw new Error(`Lexware-API antwortete mit Status ${res.status}: ${bodyText.slice(0, 300)}`);
+    const retryAfter = res.headers.get("retry-after") ?? res.headers.get("x-ratelimit-reset");
+    const retryInfo = retryAfter ? ` (retry-after: ${retryAfter})` : " (kein retry-after-Header gesendet)";
+    throw new Error(
+      `Lexware-API antwortete mit Status ${res.status}${retryInfo}: ${bodyText.slice(0, 300)}`
+    );
   }
 
   return (await res.json()) as VoucherListResponse;
