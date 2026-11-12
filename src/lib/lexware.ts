@@ -33,7 +33,8 @@ async function fetchVoucherPage(
   });
 
   if (!res.ok) {
-    throw new Error(`Lexware-API antwortete mit Status ${res.status}`);
+    const bodyText = await res.text().catch(() => "");
+    throw new Error(`Lexware-API antwortete mit Status ${res.status}: ${bodyText.slice(0, 300)}`);
   }
 
   return (await res.json()) as VoucherListResponse;
