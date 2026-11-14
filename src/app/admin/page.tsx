@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
+import { fetchNordwaldeWeather } from "@/lib/weather";
+import { getNextUstVaDeadline, getWageDueDate } from "@/lib/deadlines";
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("de-DE", { dateStyle: "medium" });
+}
 
 function toTimeLabel(value: unknown): string {
   if (!value) return "";
@@ -39,15 +45,26 @@ type ActivityEvent = {
 };
 
 export default async function AdminDashboard() {
-  const today = new Date().toLocaleDateString("de-DE", {
+  const now = new Date();
+  const today = now.toLocaleDateString("de-DE", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+  const ustVaDeadline = getNextUstVaDeadline(now);
+  const wageDueDate = getWageDueDate(now);
 
-  const [todaysAssignments, clockedIn, recentTime, recentService, recentMaterial, recentDocs] =
-    await Promise.all([
+  const [
+    weather,
+    todaysAssignments,
+    clockedIn,
+    recentTime,
+    recentService,
+    recentMaterial,
+    recentDocs,
+  ] = await Promise.all([
+      fetchNordwaldeWeather(),
       sql`
       SELECT a.id, u.name AS user_name, p.id AS project_id, p.title AS project_title,
              a.start_time, a.end_time, a.note
@@ -231,8 +248,31 @@ export default async function AdminDashboard() {
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
-      <h1 className="text-xl font-semibold text-silver-light">Dashboard</h1>
-      <p className="mb-8 text-sm text-silver">{today}</p>
+      <h1 className="text-xl font-semibold text-silver-light">Cockpit</h1>
+      <p className="mb-6 text-sm text-silver">
+        {today}
+        {weather && (
+          <>
+            {" "}
+            · Nordwalde: {Math.round(weather.temperatureC)}°C, {weather.description}
+          </>
+        )}
+      </p>
+
+      <div className="mb-10 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded border border-border p-4">
+          <p className="text-xs text-silver">Umsatzsteuer-Voranmeldung (nächste Frist)</p>
+          <p className="text-lg font-semibold text-silver-light">{formatDate(ustVaDeadline)}</p>
+          <p className="mt-1 text-xs text-silver">
+            Quartalsweise, jeweils am 10. des Folgemonats nach Quartalsende.
+          </p>
+        </div>
+        <div className="rounded border border-border p-4">
+          <p className="text-xs text-silver">Lohnzahlung (dieser Monat)</p>
+          <p className="text-lg font-semibold text-silver-light">{formatDate(wageDueDate)}</p>
+          <p className="mt-1 text-xs text-silver">Fällig am letzten Arbeitstag im Monat.</p>
+        </div>
+      </div>
 
       <div className="mb-10 grid gap-10 md:grid-cols-2">
         <div>
