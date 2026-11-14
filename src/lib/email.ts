@@ -3,7 +3,7 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 // resend.dev-Absender funktioniert ohne eigene Domain-Verifizierung bei
 // Resend - ausreichend für interne Erinnerungsmails. Bei Bedarf später auf
 // eine verifizierte eigene Domain umstellen.
-const FROM_ADDRESS = "KARA Cockpit <onboarding@resend.dev>";
+const FROM_ADDRESS = "Hoven - smart Digital e.K. <onboarding@resend.dev>";
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
