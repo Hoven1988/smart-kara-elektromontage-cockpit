@@ -127,18 +127,6 @@ export default async function GewerbesteuerPage({
         steuerlichen Gewinns.
       </p>
 
-      {!apiKey && (
-        <div className="mb-8 max-w-xl rounded border border-border bg-card p-4 text-sm text-silver">
-          <p className="mb-2 font-medium text-silver-light">Lexware-Verbindung noch nicht eingerichtet</p>
-          <p>
-            Trage in den Umgebungsvariablen (lokal in <code>.env.local</code>, auf Vercel unter
-            Project Settings → Environment Variables) einen Schlüssel{" "}
-            <code>LEXWARE_API_KEY</code> ein. Den Schlüssel erzeugst du in Lexware Office unter
-            Einstellungen → öffentliche API.
-          </p>
-        </div>
-      )}
-
       {fetchError && (
         <div className="mb-8 max-w-xl rounded border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
           Verbindung zu Lexware fehlgeschlagen: {fetchError}
