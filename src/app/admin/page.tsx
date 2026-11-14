@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
 import { fetchNordwaldeWeather } from "@/lib/weather";
-import { getNextUstVaDeadline, getWageDueDate } from "@/lib/deadlines";
+import {
+  getNextUstVaDeadline,
+  getWageDueDate,
+  isTuvDueSoon,
+  isTuvOverdue,
+  getTireChangeReminder,
+} from "@/lib/deadlines";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("de-DE", { dateStyle: "medium" });
@@ -54,9 +60,11 @@ export default async function AdminDashboard() {
   });
   const ustVaDeadline = getNextUstVaDeadline(now);
   const wageDueDate = getWageDueDate(now);
+  const tireChangeReminder = getTireChangeReminder(now);
 
   const [
     weather,
+    vehicleRows,
     todaysAssignments,
     clockedIn,
     recentTime,
@@ -65,6 +73,7 @@ export default async function AdminDashboard() {
     recentDocs,
   ] = await Promise.all([
       fetchNordwaldeWeather(),
+      sql`SELECT id, license_plate, vehicle_type, next_tuv_due, tire_type FROM vehicles ORDER BY license_plate ASC`,
       sql`
       SELECT a.id, u.name AS user_name, p.id AS project_id, p.title AS project_title,
              a.start_time, a.end_time, a.note
@@ -115,6 +124,20 @@ export default async function AdminDashboard() {
       LIMIT 20
     `,
     ]);
+
+  const vehicles = vehicleRows as unknown as Array<{
+    id: number;
+    license_plate: string;
+    vehicle_type: string;
+    next_tuv_due: unknown;
+    tire_type: string;
+  }>;
+  const tuvDueVehicles = vehicles.filter((v) => {
+    if (!v.next_tuv_due) return false;
+    const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
+    return isTuvDueSoon(due, now);
+  });
+  const seasonVehicles = vehicles.filter((v) => v.tire_type === "saison");
 
   const assignments = todaysAssignments as unknown as Array<{
     id: number;
@@ -273,6 +296,52 @@ export default async function AdminDashboard() {
           <p className="mt-1 text-xs text-silver">Fällig am letzten Arbeitstag im Monat.</p>
         </div>
       </div>
+
+      {(tuvDueVehicles.length > 0 || (tireChangeReminder && seasonVehicles.length > 0)) && (
+        <div className="mb-10 max-w-2xl">
+          <h2 className="mb-3 text-lg font-semibold text-silver-light">Fuhrpark</h2>
+          <ul className="flex flex-col gap-2">
+            {tuvDueVehicles.map((v) => {
+              const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
+              const overdue = isTuvOverdue(due, now);
+              return (
+                <li
+                  key={`tuv-${v.id}`}
+                  className={`rounded border px-4 py-2 text-sm ${
+                    overdue ? "border-danger/40 bg-danger/10" : "border-copper/40 bg-card"
+                  }`}
+                >
+                  <Link
+                    href={`/admin/fuhrpark/${v.id}`}
+                    className={overdue ? "font-medium text-danger" : "font-medium text-copper-light"}
+                  >
+                    {v.license_plate}
+                  </Link>{" "}
+                  <span className="text-silver">
+                    ({v.vehicle_type}) · TÜV {overdue ? "überfällig seit" : "fällig am"}{" "}
+                    {formatDate(due)}
+                  </span>
+                </li>
+              );
+            })}
+            {tireChangeReminder &&
+              seasonVehicles.map((v) => (
+                <li
+                  key={`tire-${v.id}`}
+                  className="rounded border border-copper/40 bg-card px-4 py-2 text-sm"
+                >
+                  <Link href={`/admin/fuhrpark/${v.id}`} className="font-medium text-copper-light">
+                    {v.license_plate}
+                  </Link>{" "}
+                  <span className="text-silver">
+                    ({v.vehicle_type}) · Reifenwechsel auf{" "}
+                    {tireChangeReminder === "sommer" ? "Sommerreifen" : "Winterreifen"} fällig
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mb-10 grid gap-10 md:grid-cols-2">
         <div>

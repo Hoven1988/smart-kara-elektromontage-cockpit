@@ -35,3 +35,36 @@ export function getWageDueDate(from: Date): Date {
   }
   return result;
 }
+
+function daysBetween(from: Date, to: Date): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((b.getTime() - a.getTime()) / msPerDay);
+}
+
+/** TÜV-Erinnerung: fällig in <= 28 Tagen (oder bereits überfällig). */
+export function isTuvDueSoon(nextTuvDue: Date, today: Date): boolean {
+  return daysBetween(today, nextTuvDue) <= 28;
+}
+
+export function isTuvOverdue(nextTuvDue: Date, today: Date): boolean {
+  return daysBetween(today, nextTuvDue) < 0;
+}
+
+/**
+ * Saisonreifen-Wechsel-Erinnerung: 1.3. (auf Sommerreifen) und 1.10. (auf
+ * Winterreifen), jeweils 2 Wochen lang sichtbar, damit sie nicht verpasst
+ * wird, falls das Cockpit nicht genau am Stichtag geöffnet wird.
+ */
+export function getTireChangeReminder(today: Date): "sommer" | "winter" | null {
+  const year = today.getFullYear();
+  const march1 = new Date(year, 2, 1);
+  const march14 = new Date(year, 2, 14);
+  const oct1 = new Date(year, 9, 1);
+  const oct14 = new Date(year, 9, 14);
+
+  if (today >= march1 && today <= march14) return "sommer";
+  if (today >= oct1 && today <= oct14) return "winter";
+  return null;
+}

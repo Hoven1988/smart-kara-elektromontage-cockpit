@@ -160,6 +160,22 @@ ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_umsatz NUMER
 ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_ausgaben NUMERIC(12,2);
 ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_fetched_at TIMESTAMPTZ;
 
+-- Fuhrpark: next_tuv_due treibt die TÜV-Erinnerung im Cockpit (4 Wochen
+-- vorher), tire_type='saison' treibt die Reifenwechsel-Erinnerung am
+-- 1.3./1.10. last_tuv ist nur zur Dokumentation, nicht für die Logik nötig.
+CREATE TABLE IF NOT EXISTS vehicles (
+  id SERIAL PRIMARY KEY,
+  license_plate TEXT NOT NULL,
+  vehicle_type TEXT NOT NULL,
+  last_tuv DATE,
+  next_tuv_due DATE,
+  tire_type TEXT NOT NULL DEFAULT 'ganzjahr' CHECK (tire_type IN ('ganzjahr', 'saison')),
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicles_next_tuv ON vehicles(next_tuv_due);
+
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
