@@ -33,7 +33,7 @@ async function getVehicles(): Promise<Vehicle[]> {
   return rows as unknown as Vehicle[];
 }
 
-async function sendDailyReminderIfDue(to: string, today: Date) {
+async function sendDailyReminderIfDue(to: string, cc: string | undefined, today: Date) {
   const vehicles = await getVehicles();
 
   const tuvItems = vehicles.filter((v) => {
@@ -72,11 +72,11 @@ async function sendDailyReminderIfDue(to: string, today: Date) {
     <ul>${lines.join("")}</ul>
   `;
 
-  await sendEmail(to, "KARA Cockpit: Erinnerung für heute", html);
+  await sendEmail(to, "KARA Cockpit: Erinnerung für heute", html, cc);
   return { sent: true };
 }
 
-async function sendMonthlySummary(to: string, today: Date) {
+async function sendMonthlySummary(to: string, cc: string | undefined, today: Date) {
   const year = today.getFullYear();
 
   const [settingsRows, vehicles] = await Promise.all([
@@ -134,7 +134,7 @@ async function sendMonthlySummary(to: string, today: Date) {
     }
   `;
 
-  await sendEmail(to, "KARA Cockpit: Monatsübersicht", html);
+  await sendEmail(to, "KARA Cockpit: Monatsübersicht", html, cc);
   return { sent: true };
 }
 
@@ -148,11 +148,14 @@ export async function GET(req: NextRequest) {
   if (!to) {
     return NextResponse.json({ skipped: "REMINDER_EMAIL_TO nicht gesetzt" });
   }
+  const cc = process.env.REMINDER_EMAIL_CC || undefined;
 
   const today = new Date();
   try {
     const result =
-      today.getDate() === 1 ? await sendMonthlySummary(to, today) : await sendDailyReminderIfDue(to, today);
+      today.getDate() === 1
+        ? await sendMonthlySummary(to, cc, today)
+        : await sendDailyReminderIfDue(to, cc, today);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unbekannter Fehler";
