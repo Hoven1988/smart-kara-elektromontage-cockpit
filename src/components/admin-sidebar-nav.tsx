@@ -12,10 +12,7 @@ const PERSONAL_ITEMS = [
   { href: "/admin/mitarbeiter", label: "Mitarbeiter" },
 ];
 
-const FINANZEN_ITEMS = [
-  { href: "/admin/liquiditaet", label: "Liquiditätsplanung" },
-  { href: "/admin/gewerbesteuer", label: "Gewerbesteuer" },
-];
+const FINANZEN_ITEMS = [{ href: "/admin/gewerbesteuer", label: "Gewerbesteuer" }];
 
 const FLAT_ITEMS = [
   { href: "/admin/fuhrpark", label: "Fuhrpark" },

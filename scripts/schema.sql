@@ -176,14 +176,9 @@ CREATE TABLE IF NOT EXISTS vehicles (
 
 CREATE INDEX IF NOT EXISTS idx_vehicles_next_tuv ON vehicles(next_tuv_due);
 
--- Einzelne Zeile (id=1): zwischengespeicherter Stand der offenen
--- Rechnungen aus Lexware, damit die Liquiditätsplanung nicht bei jedem
--- Seitenaufruf neu abfragt (schont das Rate-Limit der Lexware-API).
-CREATE TABLE IF NOT EXISTS liquidity_cache (
-  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  data JSONB,
-  fetched_at TIMESTAMPTZ
-);
+-- Liquiditätsplanung-Feature wieder entfernt (Lexware-API-Kontingent zu
+-- knapp) - Cache-Tabelle aufräumen, falls sie bereits angelegt wurde.
+DROP TABLE IF EXISTS liquidity_cache;
 
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id SERIAL PRIMARY KEY,
