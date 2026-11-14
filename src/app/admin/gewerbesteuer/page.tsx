@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
 import { fetchYearSummary } from "@/lib/lexware";
+import { computeGewerbesteuer } from "@/lib/gewerbesteuer";
 import { saveGewerbesteuerSettings } from "@/actions/gewerbesteuer";
 
 function formatEuro(value: number): string {
@@ -90,14 +91,9 @@ export default async function GewerbesteuerPage({
   const estimatedGewinn = summary ? summary.umsatz - summary.ausgaben : null;
   const gewinn = settings?.gewinn_override ?? estimatedGewinn;
 
-  let steuermessbetrag: number | null = null;
-  let gewerbesteuer: number | null = null;
-  if (gewinn !== null && hebesatz !== null) {
-    const gewerbeertrag = Math.floor(gewinn / 100) * 100;
-    const steuerpflichtig = Math.max(0, gewerbeertrag - freibetrag);
-    steuermessbetrag = steuerpflichtig * 0.035;
-    gewerbesteuer = steuermessbetrag * (hebesatz / 100);
-  }
+  const result = computeGewerbesteuer({ gewinn, freibetrag, hebesatz });
+  const steuermessbetrag = result?.steuermessbetrag ?? null;
+  const gewerbesteuer = result?.gewerbesteuer ?? null;
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">

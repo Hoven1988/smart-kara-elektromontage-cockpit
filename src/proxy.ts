@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, homePathForRole, verifySessionToken } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login", "/api/login"];
+// /api/cron/reminders wird von Vercels Cron-Scheduler ohne Session-Cookie
+// aufgerufen - die Route schützt sich selbst über CRON_SECRET.
+const PUBLIC_PATHS = ["/login", "/api/login", "/api/cron/reminders"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
