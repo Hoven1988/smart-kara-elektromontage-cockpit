@@ -12,16 +12,69 @@ const PERSONAL_ITEMS = [
   { href: "/admin/mitarbeiter", label: "Mitarbeiter" },
 ];
 
-const FLAT_ITEMS = [
-  { href: "/admin/gewerbesteuer", label: "Gewerbesteuer" },
-  { href: "/admin/einstellungen", label: "Einstellungen" },
-];
+const FINANZEN_ITEMS = [{ href: "/admin/gewerbesteuer", label: "Gewerbesteuer" }];
+
+const FLAT_ITEMS = [{ href: "/admin/einstellungen", label: "Einstellungen" }];
+
+function NavGroup({
+  label,
+  open,
+  onToggle,
+  items,
+  pathname,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  items: Array<{ href: string; label: string }>;
+  pathname: string;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex items-center justify-between px-6 py-3 text-left text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
+      >
+        {label}
+        <span
+          className="text-xs transition-transform"
+          style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
+        >
+          ▸
+        </span>
+      </button>
+      {open && (
+        <div className="flex flex-col">
+          {items.map((item) => {
+            const active = pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`px-10 py-2.5 text-sm transition-colors hover:bg-card ${
+                  active ? "text-silver-light" : "text-silver"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
 
 export function AdminSidebarNav({ clientTree }: { clientTree: ReactNode }) {
   const pathname = usePathname();
   const [auftraggeberOpen, setAuftraggeberOpen] = useState(false);
   const [personalOpen, setPersonalOpen] = useState(() =>
     PERSONAL_ITEMS.some((item) => pathname.startsWith(item.href))
+  );
+  const [finanzenOpen, setFinanzenOpen] = useState(() =>
+    FINANZEN_ITEMS.some((item) => pathname.startsWith(item.href))
   );
 
   return (
@@ -52,38 +105,21 @@ export function AdminSidebarNav({ clientTree }: { clientTree: ReactNode }) {
         </button>
         {auftraggeberOpen && <div className="px-4 pb-1">{clientTree}</div>}
 
-        <button
-          type="button"
-          onClick={() => setPersonalOpen((v) => !v)}
-          aria-expanded={personalOpen}
-          className="flex items-center justify-between px-6 py-3 text-left text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
-        >
-          Personal
-          <span
-            className="text-xs transition-transform"
-            style={{ transform: personalOpen ? "rotate(90deg)" : "rotate(0deg)" }}
-          >
-            ▸
-          </span>
-        </button>
-        {personalOpen && (
-          <div className="flex flex-col">
-            {PERSONAL_ITEMS.map((item) => {
-              const active = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-10 py-2.5 text-sm transition-colors hover:bg-card ${
-                    active ? "text-silver-light" : "text-silver"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+        <NavGroup
+          label="Personal"
+          open={personalOpen}
+          onToggle={() => setPersonalOpen((v) => !v)}
+          items={PERSONAL_ITEMS}
+          pathname={pathname}
+        />
+
+        <NavGroup
+          label="Liquidität & Finanzen"
+          open={finanzenOpen}
+          onToggle={() => setFinanzenOpen((v) => !v)}
+          items={FINANZEN_ITEMS}
+          pathname={pathname}
+        />
 
         {FLAT_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
