@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { LogoutButton } from "@/components/logout-button";
 
-const FLAT_ITEMS = [
+const PERSONAL_ITEMS = [
   { href: "/admin/planung", label: "Einsatzplanung" },
   { href: "/admin/zeiten", label: "Zeiten" },
   { href: "/admin/urlaub", label: "Urlaub" },
   { href: "/admin/mitarbeiter", label: "Mitarbeiter" },
+];
+
+const FLAT_ITEMS = [
   { href: "/admin/gewerbesteuer", label: "Gewerbesteuer" },
   { href: "/admin/einstellungen", label: "Einstellungen" },
 ];
@@ -17,6 +20,9 @@ const FLAT_ITEMS = [
 export function AdminSidebarNav({ clientTree }: { clientTree: ReactNode }) {
   const pathname = usePathname();
   const [auftraggeberOpen, setAuftraggeberOpen] = useState(false);
+  const [personalOpen, setPersonalOpen] = useState(() =>
+    PERSONAL_ITEMS.some((item) => pathname.startsWith(item.href))
+  );
 
   return (
     <div className="flex flex-1 flex-col">
@@ -45,6 +51,39 @@ export function AdminSidebarNav({ clientTree }: { clientTree: ReactNode }) {
           </span>
         </button>
         {auftraggeberOpen && <div className="px-4 pb-1">{clientTree}</div>}
+
+        <button
+          type="button"
+          onClick={() => setPersonalOpen((v) => !v)}
+          aria-expanded={personalOpen}
+          className="flex items-center justify-between px-6 py-3 text-left text-sm text-silver transition-colors hover:bg-card hover:text-silver-light"
+        >
+          Personal
+          <span
+            className="text-xs transition-transform"
+            style={{ transform: personalOpen ? "rotate(90deg)" : "rotate(0deg)" }}
+          >
+            ▸
+          </span>
+        </button>
+        {personalOpen && (
+          <div className="flex flex-col">
+            {PERSONAL_ITEMS.map((item) => {
+              const active = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-10 py-2.5 text-sm transition-colors hover:bg-card ${
+                    active ? "text-silver-light" : "text-silver"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
         {FLAT_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
