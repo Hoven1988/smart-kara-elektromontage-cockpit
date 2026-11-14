@@ -79,21 +79,17 @@ export type OpenInvoice = {
   openAmount: number;
 };
 
-/**
- * Offene Rechnungen eines Belegtyps (Status "open"/"overdue"), sortiert
- * nach Fälligkeit. Da nur offene Posten abgefragt werden, bleibt die
- * Trefferzahl normalerweise klein - meist genügt eine Seite.
- */
-async function fetchOpenVouchers(
+async function fetchVouchersByStatus(
   apiKey: string,
   voucherType: string,
+  voucherStatus: string,
   dateFrom: string,
   dateTo: string
 ): Promise<OpenInvoice[]> {
   const result: OpenInvoice[] = [];
   let page = 0;
   for (;;) {
-    const data = await fetchVoucherPage(apiKey, voucherType, "open,overdue", dateFrom, dateTo, page);
+    const data = await fetchVoucherPage(apiKey, voucherType, voucherStatus, dateFrom, dateTo, page);
     for (const item of data.content) {
       result.push({
         id: item.id,
@@ -106,7 +102,24 @@ async function fetchOpenVouchers(
     if (data.last) break;
     page += 1;
   }
-  return result.sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
+  return result;
+}
+
+/**
+ * Offene Rechnungen eines Belegtyps (Status "open" und "overdue"),
+ * sortiert nach Fälligkeit. Lexware lässt diese beiden Status nicht in
+ * einer Anfrage kombiniert zu ("voucherStatus filter 'overdue' cannot be
+ * used in combination with other states") - daher zwei getrennte Abfragen.
+ */
+async function fetchOpenVouchers(
+  apiKey: string,
+  voucherType: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<OpenInvoice[]> {
+  const open = await fetchVouchersByStatus(apiKey, voucherType, "open", dateFrom, dateTo);
+  const overdue = await fetchVouchersByStatus(apiKey, voucherType, "overdue", dateFrom, dateTo);
+  return [...open, ...overdue].sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
 }
 
 export type LiquiditySnapshot = {
