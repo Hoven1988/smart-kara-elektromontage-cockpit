@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-1">
-      <aside className="print:hidden flex w-64 flex-col border-r border-border">
+    <div className="flex flex-1 flex-col md:flex-row">
+      <div className="print:hidden">
         <AdminSidebarNav clientTree={<ClientTreeNav />} />
-      </aside>
+      </div>
       <div className="flex flex-1 flex-col overflow-y-auto">
         <main className="flex flex-col">{children}</main>
       </div>
