@@ -50,6 +50,9 @@ export async function fetchNordwaldeWeather(): Promise<WeatherNow | null> {
     });
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`, {
       next: { revalidate: 1800 },
+      // Ohne Timeout kann ein hängender Request die komplette Cockpit-Seite
+      // blockieren (await in Promise.all wartet sonst endlos).
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
 
