@@ -57,16 +57,16 @@ function CalendarGrid({
         return (
           <div
             key={dateStr}
-            className={`border-b border-r border-border p-2 ${compact ? "min-h-28" : "min-h-20"}`}
+            className={`border-b border-r border-border p-1 ${compact ? "min-h-14" : "min-h-12"}`}
           >
-            <p className={`mb-1 text-xs ${isToday ? "font-semibold text-copper-light" : "text-silver"}`}>
+            <p className={`text-[11px] ${isToday ? "font-semibold text-copper-light" : "text-silver"}`}>
               {day.getDate()}.{day.getMonth() + 1}.
             </p>
             <ul className="flex flex-col gap-0.5">
               {entries.map((entry) => (
                 <li
                   key={entry.id}
-                  className={`truncate text-xs ${
+                  className={`truncate text-[10px] ${
                     entry.done ? "text-silver line-through" : "text-silver-light"
                   }`}
                   title={entry.title}
@@ -131,102 +131,106 @@ export default async function KalenderPage({
     <div className="flex flex-1 flex-col px-6 py-6">
       <h1 className="mb-6 text-xl font-semibold text-silver-light">Kalender</h1>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/admin/kalender?view=${view}&date=${toDateStr(prevAnchor)}`}
-            className="rounded border border-border px-3 py-1.5 text-sm text-silver-light visited:text-silver-light hover:border-copper"
-          >
-            ‹
-          </Link>
-          <span className="min-w-48 text-center text-sm font-medium text-silver-light">{rangeLabel}</span>
-          <Link
-            href={`/admin/kalender?view=${view}&date=${toDateStr(nextAnchor)}`}
-            className="rounded border border-border px-3 py-1.5 text-sm text-silver-light visited:text-silver-light hover:border-copper"
-          >
-            ›
-          </Link>
-          <Link
-            href={`/admin/kalender?view=${view}&date=${toDateStr(today)}`}
-            className="ml-2 rounded border border-border px-3 py-1.5 text-sm text-silver visited:text-silver hover:border-copper"
-          >
-            Heute
-          </Link>
+      <div className="mb-10 flex flex-wrap items-start gap-10">
+        <div className="max-w-sm flex-1">
+          <h2 className="mb-3 text-lg font-semibold text-silver-light">Neuer Termin / Notiz</h2>
+          <form action={createCalendarEntry} className="flex flex-col gap-4">
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="date">
+                Datum
+              </label>
+              <input
+                id="date"
+                name="date"
+                type="date"
+                required
+                defaultValue={toDateStr(anchor)}
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="title">
+                Titel
+              </label>
+              <input
+                id="title"
+                name="title"
+                required
+                placeholder="z.B. Steuervorauszahlung Finanzamt"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="note">
+                Notiz (optional)
+              </label>
+              <input
+                id="note"
+                name="note"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <button
+              type="submit"
+              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+            >
+              Eintragen
+            </button>
+          </form>
         </div>
 
-        <div className="flex gap-2">
-          <Link
-            href={`/admin/kalender?view=monat&date=${toDateStr(anchor)}`}
-            className={`rounded px-3 py-1.5 text-sm transition-colors ${
-              view === "monat"
-                ? "bg-copper text-background"
-                : "border border-border text-silver-light visited:text-silver-light"
-            }`}
-          >
-            Monat
-          </Link>
-          <Link
-            href={`/admin/kalender?view=woche&date=${toDateStr(anchor)}`}
-            className={`rounded px-3 py-1.5 text-sm transition-colors ${
-              view === "woche"
-                ? "bg-copper text-background"
-                : "border border-border text-silver-light visited:text-silver-light"
-            }`}
-          >
-            Woche
-          </Link>
+        <div className="w-full max-w-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/admin/kalender?view=${view}&date=${toDateStr(prevAnchor)}`}
+                className="rounded border border-border px-2 py-1 text-xs text-silver-light visited:text-silver-light hover:border-copper"
+              >
+                ‹
+              </Link>
+              <span className="min-w-28 text-center text-xs font-medium text-silver-light">
+                {rangeLabel}
+              </span>
+              <Link
+                href={`/admin/kalender?view=${view}&date=${toDateStr(nextAnchor)}`}
+                className="rounded border border-border px-2 py-1 text-xs text-silver-light visited:text-silver-light hover:border-copper"
+              >
+                ›
+              </Link>
+              <Link
+                href={`/admin/kalender?view=${view}&date=${toDateStr(today)}`}
+                className="ml-1 rounded border border-border px-2 py-1 text-xs text-silver visited:text-silver hover:border-copper"
+              >
+                Heute
+              </Link>
+            </div>
+
+            <div className="flex gap-1">
+              <Link
+                href={`/admin/kalender?view=monat&date=${toDateStr(anchor)}`}
+                className={`rounded px-2 py-1 text-xs transition-colors ${
+                  view === "monat"
+                    ? "bg-copper text-background"
+                    : "border border-border text-silver-light visited:text-silver-light"
+                }`}
+              >
+                Monat
+              </Link>
+              <Link
+                href={`/admin/kalender?view=woche&date=${toDateStr(anchor)}`}
+                className={`rounded px-2 py-1 text-xs transition-colors ${
+                  view === "woche"
+                    ? "bg-copper text-background"
+                    : "border border-border text-silver-light visited:text-silver-light"
+                }`}
+              >
+                Woche
+              </Link>
+            </div>
+          </div>
+
+          <CalendarGrid days={days} entriesByDate={entriesByDate} today={today} compact={view === "monat"} />
         </div>
-      </div>
-
-      <div className="mb-10">
-        <CalendarGrid days={days} entriesByDate={entriesByDate} today={today} compact={view === "monat"} />
-      </div>
-
-      <div className="mb-10 max-w-lg">
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">Neuer Termin / Notiz</h2>
-        <form action={createCalendarEntry} className="flex flex-col gap-4">
-          <div>
-            <label className="mb-1 block text-sm text-silver" htmlFor="date">
-              Datum
-            </label>
-            <input
-              id="date"
-              name="date"
-              type="date"
-              required
-              defaultValue={toDateStr(anchor)}
-              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-silver" htmlFor="title">
-              Titel
-            </label>
-            <input
-              id="title"
-              name="title"
-              required
-              placeholder="z.B. Steuervorauszahlung Finanzamt"
-              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-silver" htmlFor="note">
-              Notiz (optional)
-            </label>
-            <input
-              id="note"
-              name="note"
-              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-            />
-          </div>
-          <button
-            type="submit"
-            className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
-          >
-            Eintragen
-          </button>
-        </form>
       </div>
 
       <div>
