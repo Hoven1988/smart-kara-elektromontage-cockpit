@@ -11,6 +11,9 @@ import {
   isMonday,
   daysBetween,
 } from "@/lib/deadlines";
+import { setDeadlineDone } from "@/actions/deadlines";
+import { setCalendarEntryDone } from "@/actions/calendar";
+import { DeadlineCheckbox } from "@/components/deadline-checkbox";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("de-DE", { dateStyle: "medium" });
@@ -75,6 +78,7 @@ export default async function AdminDashboard() {
     vehicleRows,
     upcomingCalendarRows,
     nextCalendarEntryRows,
+    completedDeadlineRows,
     todaysAssignments,
     clockedIn,
     recentTime,
@@ -85,9 +89,10 @@ export default async function AdminDashboard() {
       fetchNordwaldeWeather(),
       sql`SELECT id, license_plate, vehicle_type, last_tuv, tire_type FROM vehicles ORDER BY license_plate ASC`,
       showWeekPreview
-        ? sql`SELECT id, date, title, note FROM calendar_entries WHERE date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC`
+        ? sql`SELECT id, date, title, note FROM calendar_entries WHERE done = false AND date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC`
         : Promise.resolve([]),
-      sql`SELECT id, date, title, note FROM calendar_entries WHERE date >= CURRENT_DATE ORDER BY date ASC LIMIT 5`,
+      sql`SELECT id, date, title, note FROM calendar_entries WHERE done = false AND date >= CURRENT_DATE ORDER BY date ASC LIMIT 5`,
+      sql`SELECT type, due_date FROM completed_deadlines WHERE type IN ('lohn', 'ust')`,
       sql`
       SELECT a.id, u.name AS user_name, p.id AS project_id, p.title AS project_title,
              a.start_time, a.end_time, a.note
@@ -166,6 +171,21 @@ export default async function AdminDashboard() {
   }>;
   const nextTermin = upcomingTermine[0];
   const followingTermine = upcomingTermine.slice(1);
+
+  const completedDeadlines = completedDeadlineRows as unknown as Array<{
+    type: "lohn" | "ust";
+    due_date: unknown;
+  }>;
+  function toDateStr(value: unknown): string {
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    return String(value).slice(0, 10);
+  }
+  const isDeadlineDone = (type: "lohn" | "ust", date: Date) =>
+    completedDeadlines.some((c) => c.type === type && toDateStr(c.due_date) === toDateStr(date));
+  const wageDueDateStr = toDateStr(wageDueDate);
+  const ustVaDeadlineStr = toDateStr(ustVaDeadline);
+  const lohnDone = isDeadlineDone("lohn", wageDueDate);
+  const ustDone = isDeadlineDone("ust", ustVaDeadline);
 
   const assignments = todaysAssignments as unknown as Array<{
     id: number;
@@ -318,12 +338,17 @@ export default async function AdminDashboard() {
           : null;
 
         const deadlineItems = [
-          {
-            key: "lohn" as const,
-            date: wageDueDate,
-            label: "Lohnzahlung (dieser Monat)",
-            detail: "Fällig am letzten Arbeitstag im Monat.",
-          },
+          ...(lohnDone
+            ? []
+            : [
+                {
+                  key: "lohn" as const,
+                  date: wageDueDate,
+                  label: "Lohnzahlung (dieser Monat)",
+                  detail: "Fällig am letzten Arbeitstag im Monat.",
+                  onToggle: setDeadlineDone.bind(null, "lohn", wageDueDateStr),
+                },
+              ]),
           ...(nextTermin && nextTerminDate
             ? [
                 {
@@ -331,25 +356,37 @@ export default async function AdminDashboard() {
                   date: nextTerminDate,
                   label: "Steuervorauszahlung",
                   detail: `${nextTermin.title}${nextTermin.note ? ` · ${nextTermin.note}` : ""}`,
+                  onToggle: setCalendarEntryDone.bind(null, nextTermin.id),
                 },
               ]
             : []),
-          {
-            key: "ust" as const,
-            date: ustVaDeadline,
-            label: "Umsatzsteuer-Voranmeldung (nächste Frist)",
-            detail: "Quartalsweise, jeweils am 10. des Folgemonats nach Quartalsende.",
-          },
+          ...(ustDone
+            ? []
+            : [
+                {
+                  key: "ust" as const,
+                  date: ustVaDeadline,
+                  label: "Umsatzsteuer-Voranmeldung (nächste Frist)",
+                  detail: "Quartalsweise, jeweils am 10. des Folgemonats nach Quartalsende.",
+                  onToggle: setDeadlineDone.bind(null, "ust", ustVaDeadlineStr),
+                },
+              ]),
         ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
+        if (deadlineItems.length === 0) return null;
         const [primary, ...secondary] = deadlineItems;
 
         return (
           <div className="mb-10 max-w-3xl">
             <div className="rounded border border-copper/40 bg-card p-5">
-              <p className="text-xs text-silver">{primary.label}</p>
-              <p className="text-2xl font-semibold text-silver-light">{formatDate(primary.date)}</p>
-              <p className="mt-1 text-sm text-silver">{primary.detail}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-silver">{primary.label}</p>
+                  <p className="text-2xl font-semibold text-silver-light">{formatDate(primary.date)}</p>
+                  <p className="mt-1 text-sm text-silver">{primary.detail}</p>
+                </div>
+                <DeadlineCheckbox checked={false} onToggle={primary.onToggle} />
+              </div>
 
               {primary.key === "steuer" &&
                 followingTermine.length > 0 &&
@@ -369,10 +406,13 @@ export default async function AdminDashboard() {
             </div>
 
             {secondary.length > 0 && (
-              <ul className="mt-3 flex flex-col gap-1">
+              <ul className="mt-3 flex flex-col gap-2">
                 {secondary.map((item) => (
-                  <li key={item.key} className="text-sm text-silver">
-                    · {formatDate(item.date)} – {item.label}
+                  <li key={item.key} className="flex items-center justify-between gap-3 text-sm text-silver">
+                    <span>
+                      · {formatDate(item.date)} – {item.label}
+                    </span>
+                    <DeadlineCheckbox checked={false} onToggle={item.onToggle} />
                   </li>
                 ))}
               </ul>

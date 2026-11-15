@@ -188,15 +188,32 @@ DROP TABLE IF EXISTS liquidity_cache;
 
 -- Kalender: manuell gepflegte Termine/Notizen (z.B. Steuerzahlungen,
 -- Fristen). Werden montags im Cockpit für die kommende Woche angezeigt.
+-- done = true: als erledigt markiert, taucht dann nicht mehr als
+-- "nächster Termin" im Cockpit auf.
 CREATE TABLE IF NOT EXISTS calendar_entries (
   id SERIAL PRIMARY KEY,
   date DATE NOT NULL,
   title TEXT NOT NULL,
   note TEXT,
+  done BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE calendar_entries ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS idx_calendar_entries_date ON calendar_entries(date);
+
+-- Markiert wiederkehrende, automatisch berechnete Fristen (Lohnzahlung,
+-- Umsatzsteuer-Voranmeldung) für eine konkrete Fälligkeit als erledigt.
+-- Da sich das Datum jeden Monat/jedes Quartal ändert, setzt sich der Haken
+-- für die nächste Periode von selbst zurück (kein passender due_date-Eintrag).
+CREATE TABLE IF NOT EXISTS completed_deadlines (
+  id SERIAL PRIMARY KEY,
+  type TEXT NOT NULL CHECK (type IN ('lohn', 'ust')),
+  due_date DATE NOT NULL,
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (type, due_date)
+);
 
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id SERIAL PRIMARY KEY,

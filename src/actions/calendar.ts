@@ -23,6 +23,18 @@ export async function createCalendarEntry(formData: FormData) {
   redirect("/admin/kalender?saved=1");
 }
 
+/**
+ * Wird direkt aus einem Client-Event-Handler aufgerufen (Checkbox), nicht
+ * aus einem <form action> - deshalb kein redirect() (würde im Client-
+ * try/catch fälschlich als Fehler ankommen, siehe PhotoUploadForm).
+ */
+export async function setCalendarEntryDone(id: number, done: boolean) {
+  await requireAdmin();
+  await sql`UPDATE calendar_entries SET done = ${done} WHERE id = ${id}`;
+  revalidatePath("/admin/kalender");
+  revalidatePath("/admin");
+}
+
 export async function deleteCalendarEntry(id: number) {
   await requireAdmin();
   await sql`DELETE FROM calendar_entries WHERE id = ${id}`;

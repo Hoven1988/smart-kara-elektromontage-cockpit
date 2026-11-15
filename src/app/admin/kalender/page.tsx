@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db";
-import { createCalendarEntry, deleteCalendarEntry } from "@/actions/calendar";
+import { createCalendarEntry, deleteCalendarEntry, setCalendarEntryDone } from "@/actions/calendar";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { DeadlineCheckbox } from "@/components/deadline-checkbox";
 
 function formatDate(value: unknown): string {
   if (!value) return "";
@@ -10,7 +11,7 @@ function formatDate(value: unknown): string {
 
 export default async function KalenderPage() {
   const rows = await sql`
-    SELECT id, date, title, note
+    SELECT id, date, title, note, done
     FROM calendar_entries
     ORDER BY date ASC
   `;
@@ -19,6 +20,7 @@ export default async function KalenderPage() {
     date: unknown;
     title: string;
     note: string | null;
+    done: boolean;
   }>;
 
   return (
@@ -80,23 +82,32 @@ export default async function KalenderPage() {
             {entries.map((entry) => (
               <li
                 key={entry.id}
-                className="flex items-start justify-between gap-3 rounded border border-border px-4 py-2 text-sm"
+                className={`flex items-start justify-between gap-3 rounded border border-border px-4 py-2 text-sm ${
+                  entry.done ? "opacity-50" : ""
+                }`}
               >
                 <div>
                   <span className="font-medium text-silver-light">{formatDate(entry.date)}</span>{" "}
-                  <span className="text-silver">
+                  <span className={`text-silver ${entry.done ? "line-through" : ""}`}>
                     – {entry.title}
                     {entry.note ? ` · ${entry.note}` : ""}
                   </span>
                 </div>
-                <form action={deleteCalendarEntry.bind(null, entry.id)}>
-                  <ConfirmSubmitButton
-                    confirmMessage="Diesen Termin wirklich löschen?"
-                    className="shrink-0 text-xs text-silver hover:text-danger"
-                  >
-                    Löschen
-                  </ConfirmSubmitButton>
-                </form>
+                <div className="flex shrink-0 items-center gap-3">
+                  <DeadlineCheckbox
+                    checked={entry.done}
+                    label="Erledigt"
+                    onToggle={setCalendarEntryDone.bind(null, entry.id)}
+                  />
+                  <form action={deleteCalendarEntry.bind(null, entry.id)}>
+                    <ConfirmSubmitButton
+                      confirmMessage="Diesen Termin wirklich löschen?"
+                      className="text-xs text-silver hover:text-danger"
+                    >
+                      Löschen
+                    </ConfirmSubmitButton>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>
