@@ -1,7 +1,25 @@
+import Link from "next/link";
 import { sql } from "@/lib/db";
 import { createCalendarEntry, deleteCalendarEntry, setCalendarEntryDone } from "@/actions/calendar";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DeadlineCheckbox } from "@/components/deadline-checkbox";
+import {
+  startOfWeek,
+  addDays,
+  addMonths,
+  toDateStr,
+  isSameDay,
+  getMonthGridDays,
+  getWeekDays,
+} from "@/lib/calendar";
+
+type CalendarEntry = {
+  id: number;
+  date: unknown;
+  title: string;
+  note: string | null;
+  done: boolean;
+};
 
 function formatDate(value: unknown): string {
   if (!value) return "";
@@ -9,23 +27,160 @@ function formatDate(value: unknown): string {
   return date.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export default async function KalenderPage() {
-  const rows = await sql`
-    SELECT id, date, title, note, done
-    FROM calendar_entries
-    ORDER BY date ASC
-  `;
-  const entries = rows as unknown as Array<{
-    id: number;
-    date: unknown;
-    title: string;
-    note: string | null;
-    done: boolean;
-  }>;
+const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
+function CalendarGrid({
+  days,
+  entriesByDate,
+  today,
+  compact,
+}: {
+  days: Date[];
+  entriesByDate: Map<string, CalendarEntry[]>;
+  today: Date;
+  compact: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-7 overflow-hidden rounded border border-border">
+      {WEEKDAY_LABELS.map((label) => (
+        <div
+          key={label}
+          className="border-b border-border bg-card px-2 py-1.5 text-center text-xs font-medium text-silver"
+        >
+          {label}
+        </div>
+      ))}
+      {days.map((day) => {
+        const dateStr = toDateStr(day);
+        const entries = entriesByDate.get(dateStr) ?? [];
+        const isToday = isSameDay(day, today);
+        return (
+          <div
+            key={dateStr}
+            className={`border-b border-r border-border p-2 ${compact ? "min-h-28" : "min-h-20"}`}
+          >
+            <p className={`mb-1 text-xs ${isToday ? "font-semibold text-copper-light" : "text-silver"}`}>
+              {day.getDate()}.{day.getMonth() + 1}.
+            </p>
+            <ul className="flex flex-col gap-0.5">
+              {entries.map((entry) => (
+                <li
+                  key={entry.id}
+                  className={`truncate text-xs ${
+                    entry.done ? "text-silver line-through" : "text-silver-light"
+                  }`}
+                  title={entry.title}
+                >
+                  {entry.title}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default async function KalenderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; date?: string }>;
+}) {
+  const { view: viewParam, date: dateParam } = await searchParams;
+  const view = viewParam === "woche" ? "woche" : "monat";
+  const today = new Date();
+  const anchor = dateParam ? new Date(`${dateParam}T00:00:00`) : today;
+
+  const days = view === "monat" ? getMonthGridDays(anchor) : getWeekDays(anchor);
+  const rangeFrom = toDateStr(days[0]);
+  const rangeTo = toDateStr(days[days.length - 1]);
+
+  const [gridRows, allRows] = await Promise.all([
+    sql`
+      SELECT id, date, title, note, done
+      FROM calendar_entries
+      WHERE date >= ${rangeFrom} AND date <= ${rangeTo}
+      ORDER BY date ASC
+    `,
+    sql`
+      SELECT id, date, title, note, done
+      FROM calendar_entries
+      ORDER BY date ASC
+    `,
+  ]);
+
+  const entriesByDate = new Map<string, CalendarEntry[]>();
+  for (const row of gridRows as unknown as CalendarEntry[]) {
+    const key = toDateStr(row.date instanceof Date ? row.date : new Date(String(row.date)));
+    const list = entriesByDate.get(key) ?? [];
+    list.push(row);
+    entriesByDate.set(key, list);
+  }
+
+  const entries = allRows as unknown as CalendarEntry[];
+
+  const prevAnchor = view === "monat" ? addMonths(anchor, -1) : addDays(startOfWeek(anchor), -7);
+  const nextAnchor = view === "monat" ? addMonths(anchor, 1) : addDays(startOfWeek(anchor), 7);
+  const rangeLabel =
+    view === "monat"
+      ? anchor.toLocaleDateString("de-DE", { month: "long", year: "numeric" })
+      : `${days[0].toLocaleDateString("de-DE", { dateStyle: "medium" })} – ${days[6].toLocaleDateString("de-DE", { dateStyle: "medium" })}`;
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
       <h1 className="mb-6 text-xl font-semibold text-silver-light">Kalender</h1>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/admin/kalender?view=${view}&date=${toDateStr(prevAnchor)}`}
+            className="rounded border border-border px-3 py-1.5 text-sm text-silver-light visited:text-silver-light hover:border-copper"
+          >
+            ‹
+          </Link>
+          <span className="min-w-48 text-center text-sm font-medium text-silver-light">{rangeLabel}</span>
+          <Link
+            href={`/admin/kalender?view=${view}&date=${toDateStr(nextAnchor)}`}
+            className="rounded border border-border px-3 py-1.5 text-sm text-silver-light visited:text-silver-light hover:border-copper"
+          >
+            ›
+          </Link>
+          <Link
+            href={`/admin/kalender?view=${view}&date=${toDateStr(today)}`}
+            className="ml-2 rounded border border-border px-3 py-1.5 text-sm text-silver visited:text-silver hover:border-copper"
+          >
+            Heute
+          </Link>
+        </div>
+
+        <div className="flex gap-2">
+          <Link
+            href={`/admin/kalender?view=monat&date=${toDateStr(anchor)}`}
+            className={`rounded px-3 py-1.5 text-sm transition-colors ${
+              view === "monat"
+                ? "bg-copper text-background"
+                : "border border-border text-silver-light visited:text-silver-light"
+            }`}
+          >
+            Monat
+          </Link>
+          <Link
+            href={`/admin/kalender?view=woche&date=${toDateStr(anchor)}`}
+            className={`rounded px-3 py-1.5 text-sm transition-colors ${
+              view === "woche"
+                ? "bg-copper text-background"
+                : "border border-border text-silver-light visited:text-silver-light"
+            }`}
+          >
+            Woche
+          </Link>
+        </div>
+      </div>
+
+      <div className="mb-10">
+        <CalendarGrid days={days} entriesByDate={entriesByDate} today={today} compact={view === "monat"} />
+      </div>
 
       <div className="mb-10 max-w-lg">
         <h2 className="mb-3 text-lg font-semibold text-silver-light">Neuer Termin / Notiz</h2>
@@ -39,6 +194,7 @@ export default async function KalenderPage() {
               name="date"
               type="date"
               required
+              defaultValue={toDateStr(anchor)}
               className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
             />
           </div>
