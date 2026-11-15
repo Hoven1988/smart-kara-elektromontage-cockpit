@@ -43,9 +43,16 @@ function daysBetween(from: Date, to: Date): number {
   return Math.round((b.getTime() - a.getTime()) / msPerDay);
 }
 
-/** TÜV-Erinnerung: fällig in <= 28 Tagen (oder bereits überfällig). */
+/** Nächster TÜV = letzter TÜV + 2 Jahre (Standard-Intervall für Pkw/Transporter bis 3,5t). */
+export function getNextTuvDue(lastTuv: Date): Date {
+  const result = new Date(lastTuv);
+  result.setFullYear(result.getFullYear() + 2);
+  return result;
+}
+
+/** TÜV-Erinnerung: fällig in <= 21 Tagen (3 Wochen) oder bereits überfällig. */
 export function isTuvDueSoon(nextTuvDue: Date, today: Date): boolean {
-  return daysBetween(today, nextTuvDue) <= 28;
+  return daysBetween(today, nextTuvDue) <= 21;
 }
 
 export function isTuvOverdue(nextTuvDue: Date, today: Date): boolean {

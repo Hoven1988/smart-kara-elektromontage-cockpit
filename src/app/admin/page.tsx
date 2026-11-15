@@ -4,6 +4,7 @@ import { fetchNordwaldeWeather } from "@/lib/weather";
 import {
   getNextUstVaDeadline,
   getWageDueDate,
+  getNextTuvDue,
   isTuvDueSoon,
   isTuvOverdue,
   getTireChangeReminder,
@@ -73,7 +74,7 @@ export default async function AdminDashboard() {
     recentDocs,
   ] = await Promise.all([
       fetchNordwaldeWeather(),
-      sql`SELECT id, license_plate, vehicle_type, next_tuv_due, tire_type FROM vehicles ORDER BY license_plate ASC`,
+      sql`SELECT id, license_plate, vehicle_type, last_tuv, tire_type FROM vehicles ORDER BY license_plate ASC`,
       sql`
       SELECT a.id, u.name AS user_name, p.id AS project_id, p.title AS project_title,
              a.start_time, a.end_time, a.note
@@ -129,13 +130,12 @@ export default async function AdminDashboard() {
     id: number;
     license_plate: string;
     vehicle_type: string;
-    next_tuv_due: unknown;
+    last_tuv: unknown;
     tire_type: string;
   }>;
   const tuvDueVehicles = vehicles.filter((v) => {
-    if (!v.next_tuv_due) return false;
-    const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
-    return isTuvDueSoon(due, now);
+    const lastTuv = v.last_tuv instanceof Date ? v.last_tuv : new Date(String(v.last_tuv));
+    return isTuvDueSoon(getNextTuvDue(lastTuv), now);
   });
   const seasonVehicles = vehicles.filter((v) => v.tire_type === "saison");
 
@@ -302,7 +302,8 @@ export default async function AdminDashboard() {
           <h2 className="mb-3 text-lg font-semibold text-silver-light">Fuhrpark</h2>
           <ul className="flex flex-col gap-2">
             {tuvDueVehicles.map((v) => {
-              const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
+              const lastTuv = v.last_tuv instanceof Date ? v.last_tuv : new Date(String(v.last_tuv));
+              const due = getNextTuvDue(lastTuv);
               const overdue = isTuvOverdue(due, now);
               return (
                 <li

@@ -5,6 +5,7 @@ import { computeGewerbesteuer } from "@/lib/gewerbesteuer";
 import {
   getNextUstVaDeadline,
   getWageDueDate,
+  getNextTuvDue,
   isTuvDueSoon,
   isTuvOverdue,
   getTireChangeReminder,
@@ -22,25 +23,26 @@ type Vehicle = {
   id: number;
   license_plate: string;
   vehicle_type: string;
-  next_tuv_due: unknown;
+  last_tuv: unknown;
   tire_type: string;
 };
 
 async function getVehicles(): Promise<Vehicle[]> {
   const rows = await sql`
-    SELECT id, license_plate, vehicle_type, next_tuv_due, tire_type FROM vehicles ORDER BY license_plate ASC
+    SELECT id, license_plate, vehicle_type, last_tuv, tire_type FROM vehicles ORDER BY license_plate ASC
   `;
   return rows as unknown as Vehicle[];
+}
+
+function nextTuvFor(v: Vehicle): Date {
+  const lastTuv = v.last_tuv instanceof Date ? v.last_tuv : new Date(String(v.last_tuv));
+  return getNextTuvDue(lastTuv);
 }
 
 async function sendDailyReminderIfDue(to: string, cc: string | undefined, today: Date) {
   const vehicles = await getVehicles();
 
-  const tuvItems = vehicles.filter((v) => {
-    if (!v.next_tuv_due) return false;
-    const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
-    return isTuvDueSoon(due, today);
-  });
+  const tuvItems = vehicles.filter((v) => isTuvDueSoon(nextTuvFor(v), today));
 
   const tireChangeReminder = getTireChangeReminder(today);
   const seasonVehicles = tireChangeReminder ? vehicles.filter((v) => v.tire_type === "saison") : [];
@@ -51,7 +53,7 @@ async function sendDailyReminderIfDue(to: string, cc: string | undefined, today:
 
   const lines: string[] = [];
   for (const v of tuvItems) {
-    const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
+    const due = nextTuvFor(v);
     const overdue = isTuvOverdue(due, today);
     lines.push(
       `<li><strong>${v.license_plate}</strong> (${v.vehicle_type}) – TÜV ${
@@ -103,21 +105,14 @@ async function sendMonthlySummary(to: string, cc: string | undefined, today: Dat
   const wageDueDate = getWageDueDate(today);
 
   const inThreeMonths = new Date(today.getFullYear(), today.getMonth() + 3, today.getDate());
-  const upcomingTuv = vehicles.filter((v) => {
-    if (!v.next_tuv_due) return false;
-    const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
-    return due <= inThreeMonths;
-  });
+  const upcomingTuv = vehicles.filter((v) => nextTuvFor(v) <= inThreeMonths);
 
   const gewerbesteuerLine = gewerbesteuerResult
     ? `<li>Geschätzte Gewerbesteuer ${year}: ${formatEuro(gewerbesteuerResult.gewerbesteuer)}</li>`
     : `<li>Gewerbesteuer ${year}: noch kein Gewinn/Hebesatz hinterlegt.</li>`;
 
   const tuvLines = upcomingTuv
-    .map((v) => {
-      const due = v.next_tuv_due instanceof Date ? v.next_tuv_due : new Date(String(v.next_tuv_due));
-      return `<li>${v.license_plate} (${v.vehicle_type}): TÜV fällig am ${formatDate(due)}</li>`;
-    })
+    .map((v) => `<li>${v.license_plate} (${v.vehicle_type}): TÜV fällig am ${formatDate(nextTuvFor(v))}</li>`)
     .join("");
 
   const html = `

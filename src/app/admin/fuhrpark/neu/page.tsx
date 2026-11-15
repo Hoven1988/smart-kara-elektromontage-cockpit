@@ -30,29 +30,20 @@ export default function NewVehiclePage() {
           />
         </div>
 
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="mb-1 block text-sm text-silver" htmlFor="last_tuv">
-              Letzter TÜV
-            </label>
-            <input
-              id="last_tuv"
-              name="last_tuv"
-              type="date"
-              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-            />
-          </div>
-          <div className="flex-1">
-            <label className="mb-1 block text-sm text-silver" htmlFor="next_tuv_due">
-              Nächster TÜV fällig am
-            </label>
-            <input
-              id="next_tuv_due"
-              name="next_tuv_due"
-              type="date"
-              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-            />
-          </div>
+        <div>
+          <label className="mb-1 block text-sm text-silver" htmlFor="last_tuv">
+            Letzter TÜV
+          </label>
+          <input
+            id="last_tuv"
+            name="last_tuv"
+            type="date"
+            required
+            className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+          />
+          <p className="mt-1 text-xs text-silver">
+            Der nächste TÜV wird automatisch 2 Jahre später berechnet.
+          </p>
         </div>
 
         <div>

@@ -15,13 +15,12 @@ export async function createVehicle(formData: FormData) {
 
   const licensePlate = requireString(formData.get("license_plate"), "Kennzeichen");
   const vehicleType = requireString(formData.get("vehicle_type"), "Fahrzeugtyp");
-  const lastTuv = optionalString(formData.get("last_tuv"));
-  const nextTuvDue = optionalString(formData.get("next_tuv_due"));
+  const lastTuv = requireString(formData.get("last_tuv"), "Letzter TÜV");
   const note = optionalString(formData.get("note"));
 
   await sql`
-    INSERT INTO vehicles (license_plate, vehicle_type, last_tuv, next_tuv_due, tire_type, note)
-    VALUES (${licensePlate}, ${vehicleType}, ${lastTuv}, ${nextTuvDue}, ${tireType(formData)}, ${note})
+    INSERT INTO vehicles (license_plate, vehicle_type, last_tuv, tire_type, note)
+    VALUES (${licensePlate}, ${vehicleType}, ${lastTuv}, ${tireType(formData)}, ${note})
   `;
 
   revalidatePath("/admin/fuhrpark");
@@ -34,14 +33,13 @@ export async function updateVehicle(id: number, formData: FormData) {
 
   const licensePlate = requireString(formData.get("license_plate"), "Kennzeichen");
   const vehicleType = requireString(formData.get("vehicle_type"), "Fahrzeugtyp");
-  const lastTuv = optionalString(formData.get("last_tuv"));
-  const nextTuvDue = optionalString(formData.get("next_tuv_due"));
+  const lastTuv = requireString(formData.get("last_tuv"), "Letzter TÜV");
   const note = optionalString(formData.get("note"));
 
   await sql`
     UPDATE vehicles
     SET license_plate = ${licensePlate}, vehicle_type = ${vehicleType}, last_tuv = ${lastTuv},
-        next_tuv_due = ${nextTuvDue}, tire_type = ${tireType(formData)}, note = ${note}
+        tire_type = ${tireType(formData)}, note = ${note}
     WHERE id = ${id}
   `;
 

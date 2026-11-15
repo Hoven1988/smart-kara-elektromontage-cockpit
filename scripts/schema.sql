@@ -160,21 +160,22 @@ ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_umsatz NUMER
 ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_ausgaben NUMERIC(12,2);
 ALTER TABLE gewerbesteuer_settings ADD COLUMN IF NOT EXISTS lexware_fetched_at TIMESTAMPTZ;
 
--- Fuhrpark: next_tuv_due treibt die TÜV-Erinnerung im Cockpit (4 Wochen
--- vorher), tire_type='saison' treibt die Reifenwechsel-Erinnerung am
--- 1.3./1.10. last_tuv ist nur zur Dokumentation, nicht für die Logik nötig.
+-- Fuhrpark: nächster TÜV wird aus last_tuv + 2 Jahre errechnet (siehe
+-- lib/deadlines.ts getNextTuvDue) - kein separates Fälligkeitsfeld mehr
+-- nötig. Treibt die TÜV-Erinnerung im Cockpit (3 Wochen vorher),
+-- tire_type='saison' treibt die Reifenwechsel-Erinnerung am 1.3./1.10.
 CREATE TABLE IF NOT EXISTS vehicles (
   id SERIAL PRIMARY KEY,
   license_plate TEXT NOT NULL,
   vehicle_type TEXT NOT NULL,
-  last_tuv DATE,
-  next_tuv_due DATE,
+  last_tuv DATE NOT NULL,
   tire_type TEXT NOT NULL DEFAULT 'ganzjahr' CHECK (tire_type IN ('ganzjahr', 'saison')),
   note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_vehicles_next_tuv ON vehicles(next_tuv_due);
+ALTER TABLE vehicles DROP COLUMN IF EXISTS next_tuv_due;
+ALTER TABLE vehicles ALTER COLUMN last_tuv SET NOT NULL;
 
 -- Liquiditätsplanung-Feature wieder entfernt (Lexware-API-Kontingent zu
 -- knapp) - Cache-Tabelle aufräumen, falls sie bereits angelegt wurde.

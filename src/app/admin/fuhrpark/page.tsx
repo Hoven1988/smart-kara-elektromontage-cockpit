@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
-import { isTuvDueSoon, isTuvOverdue } from "@/lib/deadlines";
+import { getNextTuvDue, isTuvDueSoon, isTuvOverdue } from "@/lib/deadlines";
 
 function formatDate(value: unknown): string {
   if (!value) return "–";
@@ -15,7 +15,7 @@ const TIRE_LABELS: Record<string, string> = {
 
 export default async function FuhrparkPage() {
   const rows = await sql`
-    SELECT id, license_plate, vehicle_type, last_tuv, next_tuv_due, tire_type
+    SELECT id, license_plate, vehicle_type, last_tuv, tire_type
     FROM vehicles
     ORDER BY license_plate ASC
   `;
@@ -24,7 +24,6 @@ export default async function FuhrparkPage() {
     license_plate: string;
     vehicle_type: string;
     last_tuv: unknown;
-    next_tuv_due: unknown;
     tire_type: string;
   }>;
 
@@ -58,13 +57,10 @@ export default async function FuhrparkPage() {
             </thead>
             <tbody>
               {vehicles.map((vehicle) => {
-                const nextTuv = vehicle.next_tuv_due
-                  ? vehicle.next_tuv_due instanceof Date
-                    ? vehicle.next_tuv_due
-                    : new Date(String(vehicle.next_tuv_due))
-                  : null;
-                const dueSoon = nextTuv ? isTuvDueSoon(nextTuv, today) : false;
-                const overdue = nextTuv ? isTuvOverdue(nextTuv, today) : false;
+                const lastTuv = vehicle.last_tuv instanceof Date ? vehicle.last_tuv : new Date(String(vehicle.last_tuv));
+                const nextTuv = getNextTuvDue(lastTuv);
+                const dueSoon = isTuvDueSoon(nextTuv, today);
+                const overdue = isTuvOverdue(nextTuv, today);
 
                 return (
                   <tr key={vehicle.id} className="border-b border-border last:border-0">
@@ -88,7 +84,7 @@ export default async function FuhrparkPage() {
                               : "text-silver"
                         }
                       >
-                        {formatDate(vehicle.next_tuv_due)}
+                        {formatDate(nextTuv)}
                         {overdue ? " (überfällig)" : dueSoon ? " (bald fällig)" : ""}
                       </span>
                     </td>

@@ -2,11 +2,16 @@ import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
 import { updateVehicle, deleteVehicle } from "@/actions/vehicles";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { getNextTuvDue } from "@/lib/deadlines";
 
 function toDateInputValue(value: unknown): string {
   if (!value) return "";
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return String(value).slice(0, 10);
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("de-DE", { dateStyle: "medium" });
 }
 
 export default async function VehicleDetailPage({
@@ -19,7 +24,7 @@ export default async function VehicleDetailPage({
   if (!Number.isInteger(id)) notFound();
 
   const rows = await sql`
-    SELECT id, license_plate, vehicle_type, last_tuv, next_tuv_due, tire_type, note
+    SELECT id, license_plate, vehicle_type, last_tuv, tire_type, note
     FROM vehicles
     WHERE id = ${id}
   `;
@@ -29,12 +34,14 @@ export default async function VehicleDetailPage({
       license_plate: string;
       vehicle_type: string;
       last_tuv: unknown;
-      next_tuv_due: unknown;
       tire_type: string;
       note: string | null;
     }>
   )[0];
   if (!vehicle) notFound();
+
+  const lastTuvDate = vehicle.last_tuv instanceof Date ? vehicle.last_tuv : new Date(String(vehicle.last_tuv));
+  const nextTuvDue = getNextTuvDue(lastTuvDate);
 
   return (
     <div className="flex flex-1 flex-col gap-8 px-6 py-6">
@@ -67,31 +74,21 @@ export default async function VehicleDetailPage({
             />
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="mb-1 block text-sm text-silver" htmlFor="last_tuv">
-                Letzter TÜV
-              </label>
-              <input
-                id="last_tuv"
-                name="last_tuv"
-                type="date"
-                defaultValue={toDateInputValue(vehicle.last_tuv)}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-sm text-silver" htmlFor="next_tuv_due">
-                Nächster TÜV fällig am
-              </label>
-              <input
-                id="next_tuv_due"
-                name="next_tuv_due"
-                type="date"
-                defaultValue={toDateInputValue(vehicle.next_tuv_due)}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-              />
-            </div>
+          <div>
+            <label className="mb-1 block text-sm text-silver" htmlFor="last_tuv">
+              Letzter TÜV
+            </label>
+            <input
+              id="last_tuv"
+              name="last_tuv"
+              type="date"
+              required
+              defaultValue={toDateInputValue(vehicle.last_tuv)}
+              className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+            />
+            <p className="mt-1 text-xs text-silver">
+              Nächster TÜV automatisch berechnet: {formatDate(nextTuvDue)}
+            </p>
           </div>
 
           <div>
