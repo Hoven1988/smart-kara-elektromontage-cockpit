@@ -310,52 +310,76 @@ export default async function AdminDashboard() {
         )}
       </p>
 
-      <div className="mb-10 flex max-w-3xl flex-col gap-4">
-        <div className="rounded border border-copper/40 bg-card p-5">
-          <p className="text-xs text-silver">Lohnzahlung (dieser Monat)</p>
-          <p className="text-2xl font-semibold text-silver-light">{formatDate(wageDueDate)}</p>
-          <p className="mt-1 text-sm text-silver">Fällig am letzten Arbeitstag im Monat.</p>
-        </div>
+      {(() => {
+        const nextTerminDate = nextTermin
+          ? nextTermin.date instanceof Date
+            ? nextTermin.date
+            : new Date(String(nextTermin.date))
+          : null;
 
-        {nextTermin && (
-          <div className="rounded border border-copper/40 bg-card p-5">
-            <p className="text-xs text-silver">Steuervorauszahlung</p>
-            <p className="text-2xl font-semibold text-silver-light">
-              {formatDate(
-                nextTermin.date instanceof Date ? nextTermin.date : new Date(String(nextTermin.date))
-              )}
-            </p>
-            <p className="mt-1 text-sm text-silver">
-              {nextTermin.title}
-              {nextTermin.note ? ` · ${nextTermin.note}` : ""}
-            </p>
+        const deadlineItems = [
+          {
+            key: "lohn" as const,
+            date: wageDueDate,
+            label: "Lohnzahlung (dieser Monat)",
+            detail: "Fällig am letzten Arbeitstag im Monat.",
+          },
+          ...(nextTermin && nextTerminDate
+            ? [
+                {
+                  key: "steuer" as const,
+                  date: nextTerminDate,
+                  label: "Steuervorauszahlung",
+                  detail: `${nextTermin.title}${nextTermin.note ? ` · ${nextTermin.note}` : ""}`,
+                },
+              ]
+            : []),
+          {
+            key: "ust" as const,
+            date: ustVaDeadline,
+            label: "Umsatzsteuer-Voranmeldung (nächste Frist)",
+            detail: "Quartalsweise, jeweils am 10. des Folgemonats nach Quartalsende.",
+          },
+        ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
-            {followingTermine.length > 0 &&
-              daysBetween(
-                now,
-                nextTermin.date instanceof Date ? nextTermin.date : new Date(String(nextTermin.date))
-              ) <= 5 && (
-                <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
-                  {followingTermine.map((entry) => (
-                    <li key={entry.id} className="text-xs text-silver">
-                      {formatDate(entry.date instanceof Date ? entry.date : new Date(String(entry.date)))}{" "}
-                      – {entry.title}
-                      {entry.note ? ` · ${entry.note}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              )}
+        const [primary, ...secondary] = deadlineItems;
+
+        return (
+          <div className="mb-10 max-w-3xl">
+            <div className="rounded border border-copper/40 bg-card p-5">
+              <p className="text-xs text-silver">{primary.label}</p>
+              <p className="text-2xl font-semibold text-silver-light">{formatDate(primary.date)}</p>
+              <p className="mt-1 text-sm text-silver">{primary.detail}</p>
+
+              {primary.key === "steuer" &&
+                followingTermine.length > 0 &&
+                daysBetween(now, primary.date) <= 5 && (
+                  <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
+                    {followingTermine.map((entry) => (
+                      <li key={entry.id} className="text-xs text-silver">
+                        {formatDate(
+                          entry.date instanceof Date ? entry.date : new Date(String(entry.date))
+                        )}{" "}
+                        – {entry.title}
+                        {entry.note ? ` · ${entry.note}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+            </div>
+
+            {secondary.length > 0 && (
+              <ul className="mt-3 flex flex-col gap-1">
+                {secondary.map((item) => (
+                  <li key={item.key} className="text-sm text-silver">
+                    · {formatDate(item.date)} – {item.label}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        )}
-
-        <div className="rounded border border-copper/40 bg-card p-5">
-          <p className="text-xs text-silver">Umsatzsteuer-Voranmeldung (nächste Frist)</p>
-          <p className="text-2xl font-semibold text-silver-light">{formatDate(ustVaDeadline)}</p>
-          <p className="mt-1 text-sm text-silver">
-            Quartalsweise, jeweils am 10. des Folgemonats nach Quartalsende.
-          </p>
-        </div>
-      </div>
+        );
+      })()}
 
       {showWeekPreview && upcomingCalendarEntries.length > 0 && (
         <div className="mb-10 max-w-2xl">
