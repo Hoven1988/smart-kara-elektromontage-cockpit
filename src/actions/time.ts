@@ -74,10 +74,59 @@ export async function createOwnTimeEntry(formData: FormData) {
   }
 
   await sql`
-    INSERT INTO time_entries (user_id, project_id, started_at, ended_at, break_minutes, note)
-    VALUES (${user.userId}, ${projectId}, ${startedAt}, ${endedAt}, ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, ${note})
+    INSERT INTO time_entries (user_id, project_id, started_at, ended_at, break_minutes, note, self_entered)
+    VALUES (${user.userId}, ${projectId}, ${startedAt}, ${endedAt}, ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, ${note}, true)
   `;
 
+  revalidatePath("/zeiten");
+  revalidatePath("/admin/zeiten");
+  redirect("/zeiten?saved=1");
+}
+
+export async function updateOwnTimeEntry(id: number, formData: FormData) {
+  const user = await requireUser();
+
+  const owned = await sql`
+    SELECT id FROM time_entries WHERE id = ${id} AND user_id = ${user.userId} AND self_entered = true
+  `;
+  if ((owned as unknown as unknown[]).length === 0) {
+    throw new Error("Dieser Eintrag kann nicht bearbeitet werden.");
+  }
+
+  const projectIdRaw = optionalString(formData.get("project_id"));
+  const projectId = projectIdRaw ? Number(projectIdRaw) : null;
+  const date = requireString(formData.get("date"), "Datum");
+  const startTime = requireString(formData.get("start_time"), "Von");
+  const endTime = requireString(formData.get("end_time"), "Bis");
+  const breakMinutesRaw = optionalString(formData.get("break_minutes"));
+  const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
+  const note = optionalString(formData.get("note"));
+
+  if (projectId !== null && !Number.isInteger(projectId)) {
+    throw new Error("Ungültiger Auftrag.");
+  }
+
+  const startedAt = new Date(`${date}T${startTime}`);
+  const endedAt = new Date(`${date}T${endTime}`);
+  if (endedAt < startedAt) {
+    throw new Error("Das Ende darf nicht vor dem Beginn liegen.");
+  }
+
+  await sql`
+    UPDATE time_entries
+    SET project_id = ${projectId}, started_at = ${startedAt}, ended_at = ${endedAt},
+        break_minutes = ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, note = ${note}
+    WHERE id = ${id}
+  `;
+
+  revalidatePath("/zeiten");
+  revalidatePath("/admin/zeiten");
+  redirect("/zeiten?saved=1");
+}
+
+export async function deleteOwnTimeEntry(id: number) {
+  const user = await requireUser();
+  await sql`DELETE FROM time_entries WHERE id = ${id} AND user_id = ${user.userId} AND self_entered = true`;
   revalidatePath("/zeiten");
   revalidatePath("/admin/zeiten");
   redirect("/zeiten?saved=1");

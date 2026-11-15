@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { requestTimeEntryChange } from "@/actions/time";
+import { requestTimeEntryChange, updateOwnTimeEntry, deleteOwnTimeEntry } from "@/actions/time";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 function toDateTimeLabel(value: unknown): string {
   if (!value) return "";
@@ -16,6 +17,19 @@ function toDateTimeInputValue(value: unknown): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
     date.getHours()
   )}:${pad(date.getMinutes())}`;
+}
+
+function toDateInputValue(value: unknown): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(String(value));
+  return date.toISOString().slice(0, 10);
+}
+
+function toTimeInputValue(value: unknown): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(String(value));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function durationLabel(start: unknown, end: unknown, breakMinutes: number): string {
@@ -36,9 +50,10 @@ export default async function MyTimePage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [entryRows, requestRows] = await Promise.all([
+  const [entryRows, requestRows, projectRows] = await Promise.all([
     sql`
-      SELECT t.id, t.started_at, t.ended_at, t.break_minutes, t.note, p.title AS project_title
+      SELECT t.id, t.project_id, t.started_at, t.ended_at, t.break_minutes, t.note, t.self_entered,
+             p.title AS project_title
       FROM time_entries t
       LEFT JOIN projects p ON p.id = t.project_id
       WHERE t.user_id = ${user.userId}
@@ -50,16 +65,26 @@ export default async function MyTimePage() {
       WHERE requested_by = ${user.userId}
       ORDER BY time_entry_id, created_at DESC
     `,
+    sql`
+      SELECT DISTINCT p.id, p.title
+      FROM assignments a
+      JOIN projects p ON p.id = a.project_id
+      WHERE a.user_id = ${user.userId}
+      ORDER BY p.title ASC
+    `,
   ]);
 
   const entries = entryRows as unknown as Array<{
     id: number;
+    project_id: number | null;
     started_at: unknown;
     ended_at: unknown;
     break_minutes: number;
     note: string | null;
+    self_entered: boolean;
     project_title: string | null;
   }>;
+  const projects = projectRows as unknown as Array<{ id: number; title: string }>;
 
   const latestRequestByEntry = new Map<number, string>();
   for (const row of requestRows as unknown as Array<{ time_entry_id: number; status: string }>) {
@@ -111,7 +136,100 @@ export default async function MyTimePage() {
                   </p>
                 )}
 
-                {canRequest && (
+                {entry.self_entered ? (
+                  <div className="mt-3 flex items-center gap-3">
+                    <details className="flex-1">
+                      <summary className="cursor-pointer text-xs text-silver hover:text-copper-light">
+                        Bearbeiten
+                      </summary>
+                      <form
+                        action={updateOwnTimeEntry.bind(null, entry.id)}
+                        className="mt-3 flex flex-col gap-2"
+                      >
+                        <div>
+                          <label className="mb-1 block text-xs text-silver">Auftrag</label>
+                          <select
+                            name="project_id"
+                            defaultValue={entry.project_id ?? ""}
+                            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                          >
+                            <option value="">Allgemein (kein Auftrag)</option>
+                            {projects.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="mb-1 block text-xs text-silver">Datum</label>
+                            <input
+                              name="date"
+                              type="date"
+                              required
+                              defaultValue={toDateInputValue(entry.started_at)}
+                              className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="mb-1 block text-xs text-silver">Von</label>
+                            <input
+                              name="start_time"
+                              type="time"
+                              required
+                              defaultValue={toTimeInputValue(entry.started_at)}
+                              className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="mb-1 block text-xs text-silver">Bis</label>
+                            <input
+                              name="end_time"
+                              type="time"
+                              required
+                              defaultValue={toTimeInputValue(entry.ended_at)}
+                              className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-silver">Pause (min)</label>
+                          <input
+                            name="break_minutes"
+                            type="number"
+                            min={0}
+                            defaultValue={entry.break_minutes}
+                            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-silver">Notiz</label>
+                          <input
+                            name="note"
+                            defaultValue={entry.note ?? ""}
+                            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="self-start rounded bg-copper px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-copper-light"
+                        >
+                          Speichern
+                        </button>
+                      </form>
+                    </details>
+                    <form action={deleteOwnTimeEntry.bind(null, entry.id)}>
+                      <ConfirmSubmitButton
+                        confirmMessage="Diesen Eintrag wirklich löschen?"
+                        className="shrink-0 text-xs text-silver hover:text-danger"
+                      >
+                        Löschen
+                      </ConfirmSubmitButton>
+                    </form>
+                  </div>
+                ) : (
+                  canRequest && (
                   <details className="mt-3">
                     <summary className="cursor-pointer text-xs text-silver hover:text-copper-light">
                       Änderung beantragen
@@ -166,6 +284,7 @@ export default async function MyTimePage() {
                       </button>
                     </form>
                   </details>
+                  )
                 )}
               </li>
             );

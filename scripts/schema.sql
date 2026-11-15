@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS assignments (
 
 -- project_id ist absichtlich NULLable: allgemeines Ein-/Ausstempeln (Büro,
 -- Fahrzeit, ...) ohne Auftragsbezug landet hier mit project_id = NULL.
+-- self_entered = true: vom Mitarbeiter selbst nachträglich eingetragen
+-- (nicht live gestempelt) - solche Einträge darf er selbst bearbeiten/
+-- löschen, ohne Admin-Freigabe (anders als bei echten Stempelzeiten).
 CREATE TABLE IF NOT EXISTS time_entries (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -70,10 +73,12 @@ CREATE TABLE IF NOT EXISTS time_entries (
   break_minutes INTEGER NOT NULL DEFAULT 0,
   note TEXT,
   edited_by_admin BOOLEAN NOT NULL DEFAULT false,
+  self_entered BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE time_entries ALTER COLUMN project_id DROP NOT NULL;
+ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS self_entered BOOLEAN NOT NULL DEFAULT false;
 
 -- Änderungswünsche von Monteuren an bereits erfassten Zeiten - werden erst
 -- nach Freigabe durch den Admin auf time_entries übernommen.
