@@ -73,6 +73,7 @@ export default async function AdminDashboard() {
     weather,
     vehicleRows,
     upcomingCalendarRows,
+    nextCalendarEntryRows,
     todaysAssignments,
     clockedIn,
     recentTime,
@@ -85,6 +86,7 @@ export default async function AdminDashboard() {
       showWeekPreview
         ? sql`SELECT id, date, title, note FROM calendar_entries WHERE date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC`
         : Promise.resolve([]),
+      sql`SELECT id, date, title, note FROM calendar_entries WHERE date >= CURRENT_DATE ORDER BY date ASC LIMIT 1`,
       sql`
       SELECT a.id, u.name AS user_name, p.id AS project_id, p.title AS project_title,
              a.start_time, a.end_time, a.note
@@ -155,6 +157,14 @@ export default async function AdminDashboard() {
     title: string;
     note: string | null;
   }>;
+  const nextCalendarEntry = (
+    nextCalendarEntryRows as unknown as Array<{
+      id: number;
+      date: unknown;
+      title: string;
+      note: string | null;
+    }>
+  )[0];
 
   const assignments = todaysAssignments as unknown as Array<{
     id: number;
@@ -299,7 +309,11 @@ export default async function AdminDashboard() {
         )}
       </p>
 
-      <div className="mb-10 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+      <div
+        className={`mb-10 grid max-w-3xl grid-cols-1 gap-4 ${
+          nextCalendarEntry ? "sm:grid-cols-3" : "sm:grid-cols-2"
+        }`}
+      >
         <div className="rounded border border-border p-4">
           <p className="text-xs text-silver">Umsatzsteuer-Voranmeldung (nächste Frist)</p>
           <p className="text-lg font-semibold text-silver-light">{formatDate(ustVaDeadline)}</p>
@@ -312,6 +326,22 @@ export default async function AdminDashboard() {
           <p className="text-lg font-semibold text-silver-light">{formatDate(wageDueDate)}</p>
           <p className="mt-1 text-xs text-silver">Fällig am letzten Arbeitstag im Monat.</p>
         </div>
+        {nextCalendarEntry && (
+          <div className="rounded border border-border p-4">
+            <p className="text-xs text-silver">Nächster Termin</p>
+            <p className="text-lg font-semibold text-silver-light">
+              {formatDate(
+                nextCalendarEntry.date instanceof Date
+                  ? nextCalendarEntry.date
+                  : new Date(String(nextCalendarEntry.date))
+              )}
+            </p>
+            <p className="mt-1 text-xs text-silver">
+              {nextCalendarEntry.title}
+              {nextCalendarEntry.note ? ` · ${nextCalendarEntry.note}` : ""}
+            </p>
+          </div>
+        )}
       </div>
 
       {showWeekPreview && upcomingCalendarEntries.length > 0 && (
