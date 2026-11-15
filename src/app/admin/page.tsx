@@ -8,6 +8,7 @@ import {
   isTuvDueSoon,
   isTuvOverdue,
   getTireChangeReminder,
+  isMonday,
 } from "@/lib/deadlines";
 
 function formatDate(date: Date): string {
@@ -62,10 +63,16 @@ export default async function AdminDashboard() {
   const ustVaDeadline = getNextUstVaDeadline(now);
   const wageDueDate = getWageDueDate(now);
   const tireChangeReminder = getTireChangeReminder(now);
+  const showWeekPreview = isMonday(now);
+  const weekFrom = now.toISOString().slice(0, 10);
+  const weekToDate = new Date(now);
+  weekToDate.setDate(weekToDate.getDate() + 6);
+  const weekTo = weekToDate.toISOString().slice(0, 10);
 
   const [
     weather,
     vehicleRows,
+    upcomingCalendarRows,
     todaysAssignments,
     clockedIn,
     recentTime,
@@ -75,6 +82,9 @@ export default async function AdminDashboard() {
   ] = await Promise.all([
       fetchNordwaldeWeather(),
       sql`SELECT id, license_plate, vehicle_type, last_tuv, tire_type FROM vehicles ORDER BY license_plate ASC`,
+      showWeekPreview
+        ? sql`SELECT id, date, title, note FROM calendar_entries WHERE date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC`
+        : Promise.resolve([]),
       sql`
       SELECT a.id, u.name AS user_name, p.id AS project_id, p.title AS project_title,
              a.start_time, a.end_time, a.note
@@ -138,6 +148,13 @@ export default async function AdminDashboard() {
     return isTuvDueSoon(getNextTuvDue(lastTuv), now);
   });
   const seasonVehicles = vehicles.filter((v) => v.tire_type === "saison");
+
+  const upcomingCalendarEntries = upcomingCalendarRows as unknown as Array<{
+    id: number;
+    date: unknown;
+    title: string;
+    note: string | null;
+  }>;
 
   const assignments = todaysAssignments as unknown as Array<{
     id: number;
@@ -296,6 +313,25 @@ export default async function AdminDashboard() {
           <p className="mt-1 text-xs text-silver">Fällig am letzten Arbeitstag im Monat.</p>
         </div>
       </div>
+
+      {showWeekPreview && upcomingCalendarEntries.length > 0 && (
+        <div className="mb-10 max-w-2xl">
+          <h2 className="mb-3 text-lg font-semibold text-silver-light">Diese Woche</h2>
+          <ul className="flex flex-col gap-2">
+            {upcomingCalendarEntries.map((entry) => (
+              <li key={`cal-${entry.id}`} className="rounded border border-copper/40 bg-card px-4 py-2 text-sm">
+                <Link href="/admin/kalender" className="font-medium text-copper-light">
+                  {formatDate(entry.date instanceof Date ? entry.date : new Date(String(entry.date)))}
+                </Link>{" "}
+                <span className="text-silver">
+                  – {entry.title}
+                  {entry.note ? ` · ${entry.note}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {(tuvDueVehicles.length > 0 || (tireChangeReminder && seasonVehicles.length > 0)) && (
         <div className="mb-10 max-w-2xl">

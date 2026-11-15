@@ -9,6 +9,7 @@ import {
   isTuvDueSoon,
   isTuvOverdue,
   getTireChangeReminder,
+  isMonday,
 } from "@/lib/deadlines";
 
 function formatDate(date: Date): string {
@@ -47,11 +48,29 @@ async function sendDailyReminderIfDue(to: string, cc: string | undefined, today:
   const tireChangeReminder = getTireChangeReminder(today);
   const seasonVehicles = tireChangeReminder ? vehicles.filter((v) => v.tire_type === "saison") : [];
 
-  if (tuvItems.length === 0 && seasonVehicles.length === 0) {
+  let weekEntries: Array<{ date: unknown; title: string; note: string | null }> = [];
+  if (isMonday(today)) {
+    const weekFrom = today.toISOString().slice(0, 10);
+    const weekToDate = new Date(today);
+    weekToDate.setDate(weekToDate.getDate() + 6);
+    const weekTo = weekToDate.toISOString().slice(0, 10);
+    const rows = await sql`
+      SELECT date, title, note FROM calendar_entries WHERE date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC
+    `;
+    weekEntries = rows as unknown as typeof weekEntries;
+  }
+
+  if (tuvItems.length === 0 && seasonVehicles.length === 0 && weekEntries.length === 0) {
     return { sent: false, reason: "nothing due today" };
   }
 
   const lines: string[] = [];
+  for (const entry of weekEntries) {
+    const date = entry.date instanceof Date ? entry.date : new Date(String(entry.date));
+    lines.push(
+      `<li><strong>${formatDate(date)}</strong> – ${entry.title}${entry.note ? ` · ${entry.note}` : ""}</li>`
+    );
+  }
   for (const v of tuvItems) {
     const due = nextTuvFor(v);
     const overdue = isTuvOverdue(due, today);

@@ -59,6 +59,11 @@ export function isTuvOverdue(nextTuvDue: Date, today: Date): boolean {
   return daysBetween(today, nextTuvDue) < 0;
 }
 
+/** true, wenn `today` ein Montag ist - treibt die wöchentliche Terminvorschau. */
+export function isMonday(today: Date): boolean {
+  return today.getDay() === 1;
+}
+
 /**
  * Saisonreifen-Wechsel-Erinnerung: 1.3. (auf Sommerreifen) und 1.10. (auf
  * Winterreifen), jeweils 2 Wochen lang sichtbar, damit sie nicht verpasst

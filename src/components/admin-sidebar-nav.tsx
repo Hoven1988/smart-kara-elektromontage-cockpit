@@ -15,6 +15,7 @@ const PERSONAL_ITEMS = [
 const FINANZEN_ITEMS = [{ href: "/admin/gewerbesteuer", label: "Gewerbesteuer" }];
 
 const FLAT_ITEMS = [
+  { href: "/admin/kalender", label: "Kalender" },
   { href: "/admin/fuhrpark", label: "Fuhrpark" },
   { href: "/admin/einstellungen", label: "Einstellungen" },
 ];

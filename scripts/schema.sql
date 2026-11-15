@@ -186,6 +186,18 @@ ALTER TABLE vehicles ALTER COLUMN last_tuv SET NOT NULL;
 -- knapp) - Cache-Tabelle aufräumen, falls sie bereits angelegt wurde.
 DROP TABLE IF EXISTS liquidity_cache;
 
+-- Kalender: manuell gepflegte Termine/Notizen (z.B. Steuerzahlungen,
+-- Fristen). Werden montags im Cockpit für die kommende Woche angezeigt.
+CREATE TABLE IF NOT EXISTS calendar_entries (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL,
+  title TEXT NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_entries_date ON calendar_entries(date);
+
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
