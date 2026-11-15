@@ -9,6 +9,7 @@ import {
   isTuvOverdue,
   getTireChangeReminder,
   isMonday,
+  daysBetween,
 } from "@/lib/deadlines";
 
 function formatDate(date: Date): string {
@@ -309,45 +310,50 @@ export default async function AdminDashboard() {
         )}
       </p>
 
-      {nextTermin && (
-        <div className="mb-8 max-w-3xl rounded border border-copper/40 bg-card p-5">
-          <p className="text-xs text-silver">Nächster Termin</p>
-          <p className="text-2xl font-semibold text-silver-light">
-            {formatDate(
-              nextTermin.date instanceof Date ? nextTermin.date : new Date(String(nextTermin.date))
-            )}
-          </p>
-          <p className="mt-1 text-sm text-silver">
-            {nextTermin.title}
-            {nextTermin.note ? ` · ${nextTermin.note}` : ""}
-          </p>
-
-          {followingTermine.length > 0 && (
-            <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
-              {followingTermine.map((entry) => (
-                <li key={entry.id} className="text-xs text-silver">
-                  {formatDate(entry.date instanceof Date ? entry.date : new Date(String(entry.date)))} –{" "}
-                  {entry.title}
-                  {entry.note ? ` · ${entry.note}` : ""}
-                </li>
-              ))}
-            </ul>
-          )}
+      <div className="mb-10 flex max-w-3xl flex-col gap-4">
+        <div className="rounded border border-copper/40 bg-card p-5">
+          <p className="text-xs text-silver">Lohnzahlung (dieser Monat)</p>
+          <p className="text-2xl font-semibold text-silver-light">{formatDate(wageDueDate)}</p>
+          <p className="mt-1 text-sm text-silver">Fällig am letzten Arbeitstag im Monat.</p>
         </div>
-      )}
 
-      <div className="mb-10 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded border border-border p-4">
+        {nextTermin && (
+          <div className="rounded border border-copper/40 bg-card p-5">
+            <p className="text-xs text-silver">Steuervorauszahlung</p>
+            <p className="text-2xl font-semibold text-silver-light">
+              {formatDate(
+                nextTermin.date instanceof Date ? nextTermin.date : new Date(String(nextTermin.date))
+              )}
+            </p>
+            <p className="mt-1 text-sm text-silver">
+              {nextTermin.title}
+              {nextTermin.note ? ` · ${nextTermin.note}` : ""}
+            </p>
+
+            {followingTermine.length > 0 &&
+              daysBetween(
+                now,
+                nextTermin.date instanceof Date ? nextTermin.date : new Date(String(nextTermin.date))
+              ) <= 5 && (
+                <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
+                  {followingTermine.map((entry) => (
+                    <li key={entry.id} className="text-xs text-silver">
+                      {formatDate(entry.date instanceof Date ? entry.date : new Date(String(entry.date)))}{" "}
+                      – {entry.title}
+                      {entry.note ? ` · ${entry.note}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+          </div>
+        )}
+
+        <div className="rounded border border-copper/40 bg-card p-5">
           <p className="text-xs text-silver">Umsatzsteuer-Voranmeldung (nächste Frist)</p>
-          <p className="text-lg font-semibold text-silver-light">{formatDate(ustVaDeadline)}</p>
-          <p className="mt-1 text-xs text-silver">
+          <p className="text-2xl font-semibold text-silver-light">{formatDate(ustVaDeadline)}</p>
+          <p className="mt-1 text-sm text-silver">
             Quartalsweise, jeweils am 10. des Folgemonats nach Quartalsende.
           </p>
-        </div>
-        <div className="rounded border border-border p-4">
-          <p className="text-xs text-silver">Lohnzahlung (dieser Monat)</p>
-          <p className="text-lg font-semibold text-silver-light">{formatDate(wageDueDate)}</p>
-          <p className="mt-1 text-xs text-silver">Fällig am letzten Arbeitstag im Monat.</p>
         </div>
       </div>
 

@@ -36,7 +36,7 @@ export function getWageDueDate(from: Date): Date {
   return result;
 }
 
-function daysBetween(from: Date, to: Date): number {
+export function daysBetween(from: Date, to: Date): number {
   const msPerDay = 24 * 60 * 60 * 1000;
   const a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   const b = new Date(to.getFullYear(), to.getMonth(), to.getDate());
