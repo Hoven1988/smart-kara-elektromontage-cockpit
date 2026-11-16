@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { clockIn, clockOut } from "@/actions/time";
 import { closeExpiredTimeEntries } from "@/lib/worktime";
+import { MonteurCalendar } from "@/components/monteur-calendar";
 
 function toDateInputValue(value: unknown): string {
   if (!value) return "";
@@ -62,6 +63,8 @@ export default async function MonteurHome() {
       project_title: string | null;
     }>
   )[0];
+
+  const assignmentDates = assignments.map((assignment) => toDateInputValue(assignment.date));
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
@@ -145,6 +148,9 @@ export default async function MonteurHome() {
             </button>
           </form>
         )}
+        <div className="mt-6 max-w-sm">
+          <MonteurCalendar assignmentDates={assignmentDates} />
+        </div>
       </div>
 
       <h1 className="mb-6 text-xl font-semibold text-silver-light">Meine Aufträge</h1>
