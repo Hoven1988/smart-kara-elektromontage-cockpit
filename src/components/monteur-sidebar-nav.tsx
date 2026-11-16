@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 
 const NAV_ITEMS = [
+  { href: "/zeiten/neu", label: "Zeit eintragen" },
   { href: "/", label: "Meine Aufträge" },
   { href: "/zeiten", label: "Meine Zeiten" },
-  { href: "/zeiten/neu", label: "Zeit eintragen" },
   { href: "/urlaub", label: "Urlaub" },
 ];
 
@@ -27,7 +27,10 @@ export function MonteurSidebarNav() {
 
       <nav className="flex flex-1 flex-col overflow-y-auto">
         {NAV_ITEMS.map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const active =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}

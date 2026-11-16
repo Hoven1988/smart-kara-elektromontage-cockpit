@@ -14,7 +14,7 @@ export default async function MonteurLayout({ children }: { children: React.Reac
   const user = await getCurrentUser();
   if (user) await closeExpiredTimeEntries();
 
-  const [openEntryRows, customerRows, assignmentDateRows, monthSummaryRows] = user
+  const [openEntryRows, customerRows, assignmentDateRows] = user
     ? await Promise.all([
         sql`
           SELECT t.started_at, t.project_id, p.title AS project_title
@@ -24,18 +24,8 @@ export default async function MonteurLayout({ children }: { children: React.Reac
         `,
         sql`SELECT id, name FROM customers ORDER BY name ASC`,
         sql`SELECT date FROM assignments WHERE user_id = ${user.userId}`,
-        sql`
-          SELECT
-            COALESCE(SUM(EXTRACT(EPOCH FROM (ended_at - started_at)) / 60 - break_minutes), 0) AS worked_minutes,
-            COALESCE(SUM(km_driven), 0) AS km_total,
-            COUNT(DISTINCT started_at::date) AS days_worked
-          FROM time_entries
-          WHERE user_id = ${user.userId} AND ended_at IS NOT NULL
-            AND started_at >= date_trunc('month', CURRENT_DATE)
-            AND started_at < date_trunc('month', CURRENT_DATE) + interval '1 month'
-        `,
       ])
-    : [[], [], [], []];
+    : [[], [], []];
   const openEntry = (
     openEntryRows as unknown as Array<{
       started_at: unknown;
@@ -47,14 +37,6 @@ export default async function MonteurLayout({ children }: { children: React.Reac
   const assignmentDates = (assignmentDateRows as unknown as Array<{ date: unknown }>).map((row) =>
     (row.date instanceof Date ? row.date : new Date(String(row.date))).toISOString().slice(0, 10)
   );
-  const monthSummaryRow = (
-    monthSummaryRows as unknown as Array<{ worked_minutes: number; km_total: number; days_worked: number }>
-  )[0];
-  const monthSummary = {
-    workedMinutes: Math.round(Number(monthSummaryRow?.worked_minutes ?? 0)),
-    kmTotal: Number(monthSummaryRow?.km_total ?? 0),
-    daysWorked: Number(monthSummaryRow?.days_worked ?? 0),
-  };
 
   return (
     <div className="flex flex-1 flex-col md:flex-row">
@@ -80,8 +62,14 @@ export default async function MonteurLayout({ children }: { children: React.Reac
         {/* Handy: Navigation unten statt Seitenleiste */}
         <nav className="flex border-t border-border md:hidden">
           <Link
-            href="/"
+            href="/zeiten/neu"
             className="flex-1 px-3 py-3 text-center text-sm text-silver hover:text-silver-light"
+          >
+            Eintragen
+          </Link>
+          <Link
+            href="/"
+            className="flex-1 border-l border-border px-3 py-3 text-center text-sm text-silver hover:text-silver-light"
           >
             Aufträge
           </Link>
@@ -90,12 +78,6 @@ export default async function MonteurLayout({ children }: { children: React.Reac
             className="flex-1 border-l border-border px-3 py-3 text-center text-sm text-silver hover:text-silver-light"
           >
             Zeiten
-          </Link>
-          <Link
-            href="/zeiten/neu"
-            className="flex-1 border-l border-border px-3 py-3 text-center text-sm text-silver hover:text-silver-light"
-          >
-            Eintragen
           </Link>
           <Link
             href="/urlaub"
@@ -112,7 +94,6 @@ export default async function MonteurLayout({ children }: { children: React.Reac
           openEntry={openEntry ?? null}
           customers={customers}
           assignmentDates={assignmentDates}
-          monthSummary={monthSummary}
         />
       </aside>
       <SaveToast />
