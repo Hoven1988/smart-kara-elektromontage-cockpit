@@ -5,6 +5,7 @@ import { closeExpiredTimeEntries } from "@/lib/worktime";
 import { LogoutButton } from "@/components/logout-button";
 import { SaveToast } from "@/components/save-toast";
 import { MonteurSidebarNav } from "@/components/monteur-sidebar-nav";
+import { MonteurClockPanel } from "@/components/monteur-clock-panel";
 
 // Wie im Admin-Bereich: nie statisch vorab berechnen.
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function MonteurLayout({ children }: { children: React.Reac
   const user = await getCurrentUser();
   if (user) await closeExpiredTimeEntries();
 
-  const [openEntryRows, customerRows] = user
+  const [openEntryRows, customerRows, assignmentDateRows] = user
     ? await Promise.all([
         sql`
           SELECT t.started_at, t.project_id, p.title AS project_title
@@ -22,8 +23,9 @@ export default async function MonteurLayout({ children }: { children: React.Reac
           WHERE t.user_id = ${user.userId} AND t.ended_at IS NULL
         `,
         sql`SELECT id, name FROM customers ORDER BY name ASC`,
+        sql`SELECT date FROM assignments WHERE user_id = ${user.userId}`,
       ])
-    : [[], []];
+    : [[], [], []];
   const openEntry = (
     openEntryRows as unknown as Array<{
       started_at: unknown;
@@ -32,12 +34,15 @@ export default async function MonteurLayout({ children }: { children: React.Reac
     }>
   )[0];
   const customers = customerRows as unknown as Array<{ id: number; name: string }>;
+  const assignmentDates = (assignmentDateRows as unknown as Array<{ date: unknown }>).map((row) =>
+    (row.date instanceof Date ? row.date : new Date(String(row.date))).toISOString().slice(0, 10)
+  );
 
   return (
     <div className="flex flex-1 flex-col md:flex-row">
       {/* Desktop/Tablet: feste Seitenleiste wie im Admin-Bereich */}
-      <aside className="hidden w-64 flex-col border-r border-border md:flex">
-        <MonteurSidebarNav openEntry={openEntry ?? null} customers={customers} />
+      <aside className="hidden w-56 flex-col border-r border-border md:flex">
+        <MonteurSidebarNav />
       </aside>
 
       <div className="flex flex-1 flex-col">
@@ -82,6 +87,15 @@ export default async function MonteurLayout({ children }: { children: React.Reac
           </Link>
         </nav>
       </div>
+
+      {/* Desktop/Tablet: Einstempeln + Kalender rechts neben dem Inhalt */}
+      <aside className="hidden w-72 flex-col border-l border-border md:flex">
+        <MonteurClockPanel
+          openEntry={openEntry ?? null}
+          customers={customers}
+          assignmentDates={assignmentDates}
+        />
+      </aside>
       <SaveToast />
     </div>
   );
