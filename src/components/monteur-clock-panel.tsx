@@ -13,6 +13,7 @@ export function MonteurClockPanel({
   openEntry,
   customers,
   assignmentDates,
+  monthSummary,
 }: {
   openEntry: {
     started_at: unknown;
@@ -21,6 +22,7 @@ export function MonteurClockPanel({
   } | null;
   customers: Array<{ id: number; name: string }>;
   assignmentDates: string[];
+  monthSummary: { workedMinutes: number; kmTotal: number; daysWorked: number };
 }) {
   const today = new Date();
   const days = getMonthGridDays(today);
@@ -116,6 +118,17 @@ export function MonteurClockPanel({
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-2 text-sm font-medium text-silver-light">Diesen Monat</p>
+        <div className="flex flex-col gap-1 rounded border border-border px-3 py-2 text-sm text-silver">
+          <p>
+            {Math.floor(monthSummary.workedMinutes / 60)}h {monthSummary.workedMinutes % 60}min gearbeitet
+          </p>
+          <p>{monthSummary.daysWorked} Tage</p>
+          <p>{monthSummary.kmTotal.toLocaleString("de-DE")} km gefahren</p>
         </div>
       </div>
     </div>
