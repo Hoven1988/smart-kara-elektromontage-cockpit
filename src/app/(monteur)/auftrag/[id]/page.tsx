@@ -217,10 +217,21 @@ export default async function MonteurProjectPage({
               <p className="text-xs text-silver">Pause wird automatisch nach Arbeitszeitgesetz abgezogen.</p>
             </form>
           ) : (
-            <form action={clockIn.bind(null, projectId)}>
+            <form action={clockIn.bind(null, projectId)} className="flex max-w-sm flex-col gap-3">
+              <div>
+                <label className="mb-1 block text-sm text-silver" htmlFor="note">
+                  Baustelle
+                </label>
+                <input
+                  id="note"
+                  name="note"
+                  placeholder="z.B. genaue Lage auf dem Gelände (optional)"
+                  className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+                />
+              </div>
               <button
                 type="submit"
-                className="rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+                className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
               >
                 Einstempeln
               </button>
