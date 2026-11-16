@@ -21,9 +21,11 @@ export default async function MonteurHome() {
 
   const [assignmentRows, openEntryRows] = await Promise.all([
     sql`
-      SELECT a.id, a.date, a.start_time, a.end_time, p.id AS project_id, p.title, p.address, p.status
+      SELECT a.id, a.date, a.start_time, a.end_time, p.id AS project_id, p.title, p.address, p.status,
+        c.name AS customer_name
       FROM assignments a
       JOIN projects p ON p.id = a.project_id
+      LEFT JOIN customers c ON c.id = p.customer_id
       WHERE a.user_id = ${user.userId}
       ORDER BY a.date ASC
     `,
@@ -44,6 +46,7 @@ export default async function MonteurHome() {
     title: string;
     address: string | null;
     status: string;
+    customer_name: string | null;
   }>;
 
   const openEntry = (
@@ -121,6 +124,9 @@ export default async function MonteurHome() {
                 className="flex flex-col gap-1 rounded border border-border px-4 py-3 hover:border-copper"
               >
                 <span className="font-medium text-silver-light">{assignment.title}</span>
+                {assignment.customer_name && (
+                  <span className="text-sm text-copper-light">{assignment.customer_name}</span>
+                )}
                 <span className="text-sm text-silver">
                   {toDateInputValue(assignment.date)}
                   {assignment.address ? ` · ${assignment.address}` : ""}

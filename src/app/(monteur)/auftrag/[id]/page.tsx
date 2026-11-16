@@ -37,15 +37,23 @@ export default async function MonteurProjectPage({
   if (!user) return null;
 
   const projects = (await sql`
-    SELECT id, title, address, description, status
-    FROM projects
-    WHERE id = ${projectId}
+    SELECT p.id, p.title, p.address, p.description, p.status,
+      c.name AS customer_name, c.contact_person AS customer_contact_person,
+      c.phone AS customer_phone, c.email AS customer_email, c.address AS customer_address
+    FROM projects p
+    LEFT JOIN customers c ON c.id = p.customer_id
+    WHERE p.id = ${projectId}
   `) as unknown as Array<{
     id: number;
     title: string;
     address: string | null;
     description: string | null;
     status: string;
+    customer_name: string | null;
+    customer_contact_person: string | null;
+    customer_phone: string | null;
+    customer_email: string | null;
+    customer_address: string | null;
   }>;
   const project = projects[0];
   if (!project) notFound();
@@ -155,6 +163,25 @@ export default async function MonteurProjectPage({
         {project.address && <p className="mb-4 text-sm text-silver">{project.address}</p>}
         {project.description && (
           <p className="mb-6 max-w-lg text-sm text-silver">{project.description}</p>
+        )}
+
+        {project.customer_name && (
+          <div className="mb-6 max-w-sm rounded border border-border px-4 py-3">
+            <p className="mb-1 text-sm font-medium text-copper-light">Auftraggeber</p>
+            <p className="text-sm text-silver-light">{project.customer_name}</p>
+            {project.customer_contact_person && (
+              <p className="text-sm text-silver">{project.customer_contact_person}</p>
+            )}
+            {project.customer_phone && (
+              <p className="text-sm text-silver">Tel: {project.customer_phone}</p>
+            )}
+            {project.customer_email && (
+              <p className="text-sm text-silver">{project.customer_email}</p>
+            )}
+            {project.customer_address && (
+              <p className="text-sm text-silver">{project.customer_address}</p>
+            )}
+          </div>
         )}
 
         <div className="mb-8">
