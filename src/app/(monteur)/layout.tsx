@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { closeExpiredTimeEntries } from "@/lib/worktime";
 import { LogoutButton } from "@/components/logout-button";
 import { SaveToast } from "@/components/save-toast";
 import { MonteurSidebarNav } from "@/components/monteur-sidebar-nav";
@@ -10,15 +11,19 @@ export const dynamic = "force-dynamic";
 
 export default async function MonteurLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  if (user) await closeExpiredTimeEntries();
 
-  const openEntryRows = user
-    ? await sql`
-        SELECT t.started_at, t.project_id, p.title AS project_title
-        FROM time_entries t
-        LEFT JOIN projects p ON p.id = t.project_id
-        WHERE t.user_id = ${user.userId} AND t.ended_at IS NULL
-      `
-    : [];
+  const [openEntryRows, customerRows] = user
+    ? await Promise.all([
+        sql`
+          SELECT t.started_at, t.project_id, p.title AS project_title
+          FROM time_entries t
+          LEFT JOIN projects p ON p.id = t.project_id
+          WHERE t.user_id = ${user.userId} AND t.ended_at IS NULL
+        `,
+        sql`SELECT id, name FROM customers ORDER BY name ASC`,
+      ])
+    : [[], []];
   const openEntry = (
     openEntryRows as unknown as Array<{
       started_at: unknown;
@@ -26,12 +31,13 @@ export default async function MonteurLayout({ children }: { children: React.Reac
       project_title: string | null;
     }>
   )[0];
+  const customers = customerRows as unknown as Array<{ id: number; name: string }>;
 
   return (
     <div className="flex flex-1 flex-col md:flex-row">
       {/* Desktop/Tablet: feste Seitenleiste wie im Admin-Bereich */}
       <aside className="hidden w-64 flex-col border-r border-border md:flex">
-        <MonteurSidebarNav openEntry={openEntry ?? null} />
+        <MonteurSidebarNav openEntry={openEntry ?? null} customers={customers} />
       </aside>
 
       <div className="flex flex-1 flex-col">

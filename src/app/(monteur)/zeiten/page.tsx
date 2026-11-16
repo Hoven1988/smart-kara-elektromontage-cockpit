@@ -50,12 +50,13 @@ export default async function MyTimePage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [entryRows, requestRows, projectRows] = await Promise.all([
+  const [entryRows, requestRows, projectRows, customerRows] = await Promise.all([
     sql`
-      SELECT t.id, t.project_id, t.started_at, t.ended_at, t.break_minutes, t.note, t.self_entered,
-             p.title AS project_title
+      SELECT t.id, t.project_id, t.customer_id, t.started_at, t.ended_at, t.break_minutes, t.note,
+             t.km_driven, t.self_entered, p.title AS project_title, c.name AS customer_name
       FROM time_entries t
       LEFT JOIN projects p ON p.id = t.project_id
+      LEFT JOIN customers c ON c.id = t.customer_id
       WHERE t.user_id = ${user.userId}
       ORDER BY t.started_at DESC
     `,
@@ -72,19 +73,24 @@ export default async function MyTimePage() {
       WHERE a.user_id = ${user.userId}
       ORDER BY p.title ASC
     `,
+    sql`SELECT id, name FROM customers ORDER BY name ASC`,
   ]);
 
   const entries = entryRows as unknown as Array<{
     id: number;
     project_id: number | null;
+    customer_id: number | null;
     started_at: unknown;
     ended_at: unknown;
     break_minutes: number;
     note: string | null;
+    km_driven: number | null;
     self_entered: boolean;
     project_title: string | null;
+    customer_name: string | null;
   }>;
   const projects = projectRows as unknown as Array<{ id: number; title: string }>;
+  const customers = customerRows as unknown as Array<{ id: number; name: string }>;
 
   const latestRequestByEntry = new Map<number, string>();
   for (const row of requestRows as unknown as Array<{ time_entry_id: number; status: string }>) {
@@ -113,7 +119,7 @@ export default async function MyTimePage() {
               <li key={entry.id} className="rounded border border-border p-4 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium text-silver-light">
-                    {entry.project_title ?? "Allgemein"}
+                    {entry.project_title ?? entry.customer_name ?? "Allgemein"}
                   </span>
                   <span className="text-silver">
                     {durationLabel(entry.started_at, entry.ended_at, entry.break_minutes)}
@@ -123,6 +129,8 @@ export default async function MyTimePage() {
                   {toDateTimeLabel(entry.started_at)}
                   {entry.ended_at ? ` – ${toDateTimeLabel(entry.ended_at)}` : ""} · Pause{" "}
                   {entry.break_minutes} min
+                  {entry.project_title && entry.customer_name ? ` · ${entry.customer_name}` : ""}
+                  {entry.km_driven != null ? ` · ${entry.km_driven} km` : ""}
                   {entry.note ? ` · ${entry.note}` : ""}
                 </p>
 
@@ -161,6 +169,21 @@ export default async function MyTimePage() {
                             ))}
                           </select>
                         </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-silver">Kunde</label>
+                          <select
+                            name="customer_id"
+                            defaultValue={entry.customer_id ?? ""}
+                            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                          >
+                            <option value="">– Auswählen (optional) –</option>
+                            {customers.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <label className="mb-1 block text-xs text-silver">Datum</label>
@@ -192,17 +215,21 @@ export default async function MyTimePage() {
                               className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
                             />
                           </div>
+                          <div className="w-20">
+                            <label className="mb-1 block text-xs text-silver">Km</label>
+                            <input
+                              name="km_driven"
+                              type="number"
+                              min={0}
+                              step="0.1"
+                              defaultValue={entry.km_driven ?? ""}
+                              className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="mb-1 block text-xs text-silver">Pause (min)</label>
-                          <input
-                            name="break_minutes"
-                            type="number"
-                            min={0}
-                            defaultValue={entry.break_minutes}
-                            className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-copper"
-                          />
-                        </div>
+                        <p className="text-[11px] text-silver">
+                          Pause wird automatisch berechnet (ab 6h: 30 min, ab 9h: 45 min).
+                        </p>
                         <div>
                           <label className="mb-1 block text-xs text-silver">Notiz</label>
                           <input

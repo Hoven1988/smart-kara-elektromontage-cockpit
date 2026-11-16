@@ -199,19 +199,6 @@ export default async function MonteurProjectPage({
                 Eingestempelt seit {toDateTimeLabel(openEntry!.started_at)}
               </p>
               <div>
-                <label className="mb-1 block text-sm text-silver" htmlFor="break_minutes">
-                  Pause (Minuten)
-                </label>
-                <input
-                  id="break_minutes"
-                  name="break_minutes"
-                  type="number"
-                  min={0}
-                  defaultValue={0}
-                  className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-                />
-              </div>
-              <div>
                 <label className="mb-1 block text-sm text-silver" htmlFor="note">
                   Notiz
                 </label>
@@ -227,6 +214,7 @@ export default async function MonteurProjectPage({
               >
                 Ausstempeln
               </button>
+              <p className="text-xs text-silver">Pause wird automatisch nach Arbeitszeitgesetz abgezogen.</p>
             </form>
           ) : (
             <form action={clockIn.bind(null, projectId)}>

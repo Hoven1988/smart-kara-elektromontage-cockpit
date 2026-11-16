@@ -20,12 +20,14 @@ function toDateTimeLabel(value: unknown): string {
 
 export function MonteurSidebarNav({
   openEntry,
+  customers,
 }: {
   openEntry: {
     started_at: unknown;
     project_id: number | null;
     project_title: string | null;
   } | null;
+  customers: Array<{ id: number; name: string }>;
 }) {
   const pathname = usePathname();
 
@@ -49,14 +51,6 @@ export function MonteurSidebarNav({
               {openEntry.project_id ? openEntry.project_title : "Allgemein"}
             </p>
             <input
-              name="break_minutes"
-              type="number"
-              min={0}
-              defaultValue={0}
-              placeholder="Pause (min)"
-              className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-copper"
-            />
-            <input
               name="note"
               placeholder="Notiz (optional)"
               className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-copper"
@@ -67,9 +61,35 @@ export function MonteurSidebarNav({
             >
               Ausstempeln
             </button>
+            <p className="text-[11px] text-silver">Pause wird automatisch abgezogen.</p>
           </form>
         ) : (
-          <form action={clockIn.bind(null, null)}>
+          <form action={clockIn.bind(null, null)} className="flex flex-col gap-2">
+            <select
+              name="customer_id"
+              defaultValue=""
+              className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-copper"
+            >
+              <option value="">Kunde (optional)</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+            <input
+              name="note"
+              placeholder="Baustelle (optional)"
+              className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-copper"
+            />
+            <input
+              name="km_driven"
+              type="number"
+              min={0}
+              step="0.1"
+              placeholder="Gefahrene km (optional)"
+              className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-copper"
+            />
             <button
               type="submit"
               className="w-full rounded bg-copper px-3 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"

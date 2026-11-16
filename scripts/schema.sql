@@ -234,3 +234,10 @@ CREATE INDEX IF NOT EXISTS idx_change_requests_status ON time_entry_change_reque
 CREATE INDEX IF NOT EXISTS idx_change_requests_entry ON time_entry_change_requests(time_entry_id);
 CREATE INDEX IF NOT EXISTS idx_leave_requests_user ON leave_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests(status);
+
+-- Mitarbeiter können beim Einstempeln/Zeit eintragen direkt einen Kunden
+-- auswählen (statt eines vorab vom Admin zugewiesenen Auftrags) und die
+-- gefahrenen Kilometer erfassen.
+ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS km_driven NUMERIC(6,1);
+CREATE INDEX IF NOT EXISTS idx_time_entries_customer ON time_entries(customer_id);

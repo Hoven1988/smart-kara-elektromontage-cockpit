@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { requireUser, requireAdmin } from "@/lib/auth";
 import { optionalString, requireString } from "@/lib/validation";
+import { autoBreakMinutes, closeExpiredTimeEntries } from "@/lib/worktime";
 
-export async function clockIn(projectId: number | null) {
+export async function clockIn(projectId: number | null, formData: FormData) {
   const user = await requireUser();
+  await closeExpiredTimeEntries();
 
   const openEntries = await sql`
     SELECT id FROM time_entries
@@ -17,9 +19,18 @@ export async function clockIn(projectId: number | null) {
     throw new Error("Du bist bereits eingestempelt.");
   }
 
+  const customerIdRaw = optionalString(formData.get("customer_id"));
+  const customerId = customerIdRaw ? Number(customerIdRaw) : null;
+  const note = optionalString(formData.get("note"));
+  const kmRaw = optionalString(formData.get("km_driven"));
+  const km = kmRaw ? Number(kmRaw) : null;
+
   await sql`
-    INSERT INTO time_entries (user_id, project_id, started_at)
-    VALUES (${user.userId}, ${projectId}, now())
+    INSERT INTO time_entries (user_id, project_id, customer_id, started_at, note, km_driven)
+    VALUES (
+      ${user.userId}, ${projectId}, ${customerId}, now(), ${note},
+      ${km !== null && Number.isFinite(km) ? km : null}
+    )
   `;
 
   const returnTo = projectId ? `/auftrag/${projectId}` : "/";
@@ -31,18 +42,29 @@ export async function clockIn(projectId: number | null) {
 
 export async function clockOut(projectId: number | null, formData: FormData) {
   const user = await requireUser();
+  await closeExpiredTimeEntries();
 
-  const breakMinutesRaw = optionalString(formData.get("break_minutes"));
-  const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
   const note = optionalString(formData.get("note"));
 
   // Ein Monteur hat laut clockIn() immer höchstens einen offenen Eintrag,
   // daher reicht der Filter auf user_id + offen - unabhängig vom Projekt.
-  await sql`
-    UPDATE time_entries
-    SET ended_at = now(), break_minutes = ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, note = ${note}
+  const openRows = await sql`
+    SELECT id, started_at FROM time_entries
     WHERE user_id = ${user.userId} AND ended_at IS NULL
   `;
+  const open = (openRows as unknown as Array<{ id: number; started_at: unknown }>)[0];
+
+  if (open) {
+    const startedAt = open.started_at instanceof Date ? open.started_at : new Date(String(open.started_at));
+    const grossMinutes = Math.round((Date.now() - startedAt.getTime()) / 60000);
+    const breakMinutes = autoBreakMinutes(grossMinutes);
+
+    await sql`
+      UPDATE time_entries
+      SET ended_at = now(), break_minutes = ${breakMinutes}, note = ${note}
+      WHERE id = ${open.id}
+    `;
+  }
 
   const returnTo = projectId ? `/auftrag/${projectId}` : "/";
   if (projectId) revalidatePath(`/auftrag/${projectId}`);
@@ -56,11 +78,13 @@ export async function createOwnTimeEntry(formData: FormData) {
 
   const projectIdRaw = optionalString(formData.get("project_id"));
   const projectId = projectIdRaw ? Number(projectIdRaw) : null;
+  const customerIdRaw = optionalString(formData.get("customer_id"));
+  const customerId = customerIdRaw ? Number(customerIdRaw) : null;
   const date = requireString(formData.get("date"), "Datum");
   const startTime = requireString(formData.get("start_time"), "Von");
   const endTime = requireString(formData.get("end_time"), "Bis");
-  const breakMinutesRaw = optionalString(formData.get("break_minutes"));
-  const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
+  const kmRaw = optionalString(formData.get("km_driven"));
+  const km = kmRaw ? Number(kmRaw) : null;
   const note = optionalString(formData.get("note"));
 
   if (projectId !== null && !Number.isInteger(projectId)) {
@@ -72,10 +96,15 @@ export async function createOwnTimeEntry(formData: FormData) {
   if (endedAt < startedAt) {
     throw new Error("Das Ende darf nicht vor dem Beginn liegen.");
   }
+  const breakMinutes = autoBreakMinutes(Math.round((endedAt.getTime() - startedAt.getTime()) / 60000));
 
   await sql`
-    INSERT INTO time_entries (user_id, project_id, started_at, ended_at, break_minutes, note, self_entered)
-    VALUES (${user.userId}, ${projectId}, ${startedAt}, ${endedAt}, ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, ${note}, true)
+    INSERT INTO time_entries
+      (user_id, project_id, customer_id, started_at, ended_at, break_minutes, note, km_driven, self_entered)
+    VALUES (
+      ${user.userId}, ${projectId}, ${customerId}, ${startedAt}, ${endedAt}, ${breakMinutes}, ${note},
+      ${km !== null && Number.isFinite(km) ? km : null}, true
+    )
   `;
 
   revalidatePath("/zeiten");
@@ -95,11 +124,13 @@ export async function updateOwnTimeEntry(id: number, formData: FormData) {
 
   const projectIdRaw = optionalString(formData.get("project_id"));
   const projectId = projectIdRaw ? Number(projectIdRaw) : null;
+  const customerIdRaw = optionalString(formData.get("customer_id"));
+  const customerId = customerIdRaw ? Number(customerIdRaw) : null;
   const date = requireString(formData.get("date"), "Datum");
   const startTime = requireString(formData.get("start_time"), "Von");
   const endTime = requireString(formData.get("end_time"), "Bis");
-  const breakMinutesRaw = optionalString(formData.get("break_minutes"));
-  const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
+  const kmRaw = optionalString(formData.get("km_driven"));
+  const km = kmRaw ? Number(kmRaw) : null;
   const note = optionalString(formData.get("note"));
 
   if (projectId !== null && !Number.isInteger(projectId)) {
@@ -111,11 +142,13 @@ export async function updateOwnTimeEntry(id: number, formData: FormData) {
   if (endedAt < startedAt) {
     throw new Error("Das Ende darf nicht vor dem Beginn liegen.");
   }
+  const breakMinutes = autoBreakMinutes(Math.round((endedAt.getTime() - startedAt.getTime()) / 60000));
 
   await sql`
     UPDATE time_entries
-    SET project_id = ${projectId}, started_at = ${startedAt}, ended_at = ${endedAt},
-        break_minutes = ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, note = ${note}
+    SET project_id = ${projectId}, customer_id = ${customerId}, started_at = ${startedAt}, ended_at = ${endedAt},
+        break_minutes = ${breakMinutes}, note = ${note},
+        km_driven = ${km !== null && Number.isFinite(km) ? km : null}
     WHERE id = ${id}
   `;
 
@@ -138,11 +171,15 @@ export async function createTimeEntry(formData: FormData) {
   const userId = Number(requireString(formData.get("user_id"), "Mitarbeiter"));
   const projectIdRaw = optionalString(formData.get("project_id"));
   const projectId = projectIdRaw ? Number(projectIdRaw) : null;
+  const customerIdRaw = optionalString(formData.get("customer_id"));
+  const customerId = customerIdRaw ? Number(customerIdRaw) : null;
   const date = requireString(formData.get("date"), "Datum");
   const startTime = requireString(formData.get("start_time"), "Von");
   const endTime = optionalString(formData.get("end_time"));
   const breakMinutesRaw = optionalString(formData.get("break_minutes"));
   const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
+  const kmRaw = optionalString(formData.get("km_driven"));
+  const km = kmRaw ? Number(kmRaw) : null;
   const note = optionalString(formData.get("note"));
 
   if (!Number.isInteger(userId) || (projectId !== null && !Number.isInteger(projectId))) {
@@ -153,8 +190,13 @@ export async function createTimeEntry(formData: FormData) {
   const endedAt = endTime ? new Date(`${date}T${endTime}`) : null;
 
   await sql`
-    INSERT INTO time_entries (user_id, project_id, started_at, ended_at, break_minutes, note, edited_by_admin)
-    VALUES (${userId}, ${projectId}, ${startedAt}, ${endedAt}, ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, ${note}, true)
+    INSERT INTO time_entries
+      (user_id, project_id, customer_id, started_at, ended_at, break_minutes, note, km_driven, edited_by_admin)
+    VALUES (
+      ${userId}, ${projectId}, ${customerId}, ${startedAt}, ${endedAt},
+      ${Number.isFinite(breakMinutes) ? breakMinutes : 0}, ${note},
+      ${km !== null && Number.isFinite(km) ? km : null}, true
+    )
   `;
 
   revalidatePath("/admin/zeiten");
@@ -168,11 +210,14 @@ export async function updateTimeEntry(id: number, formData: FormData) {
   const breakMinutes = breakMinutesRaw ? Number(breakMinutesRaw) : 0;
   const note = optionalString(formData.get("note"));
   const endedAtRaw = optionalString(formData.get("ended_at"));
+  const kmRaw = optionalString(formData.get("km_driven"));
+  const km = kmRaw ? Number(kmRaw) : null;
 
   await sql`
     UPDATE time_entries
     SET break_minutes = ${Number.isFinite(breakMinutes) ? breakMinutes : 0},
         note = ${note},
+        km_driven = ${km !== null && Number.isFinite(km) ? km : null},
         edited_by_admin = true
     WHERE id = ${id}
   `;

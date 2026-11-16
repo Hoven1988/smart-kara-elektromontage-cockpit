@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { clockIn, clockOut } from "@/actions/time";
+import { closeExpiredTimeEntries } from "@/lib/worktime";
 
 function toDateInputValue(value: unknown): string {
   if (!value) return "";
@@ -19,7 +20,9 @@ export default async function MonteurHome() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [assignmentRows, openEntryRows] = await Promise.all([
+  await closeExpiredTimeEntries();
+
+  const [assignmentRows, openEntryRows, customerRows] = await Promise.all([
     sql`
       SELECT a.id, a.date, a.start_time, a.end_time, p.id AS project_id, p.title, p.address, p.status,
         c.name AS customer_name
@@ -35,7 +38,9 @@ export default async function MonteurHome() {
       LEFT JOIN projects p ON p.id = t.project_id
       WHERE t.user_id = ${user.userId} AND t.ended_at IS NULL
     `,
+    sql`SELECT id, name FROM customers ORDER BY name ASC`,
   ]);
+  const customers = customerRows as unknown as Array<{ id: number; name: string }>;
 
   const assignments = assignmentRows as unknown as Array<{
     id: number;
@@ -71,19 +76,6 @@ export default async function MonteurHome() {
               {openEntry.project_id ? ` · ${openEntry.project_title}` : " · Allgemein"}
             </p>
             <div>
-              <label className="mb-1 block text-sm text-silver" htmlFor="break_minutes">
-                Pause (Minuten)
-              </label>
-              <input
-                id="break_minutes"
-                name="break_minutes"
-                type="number"
-                min={0}
-                defaultValue={0}
-                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-              />
-            </div>
-            <div>
               <label className="mb-1 block text-sm text-silver" htmlFor="note">
                 Notiz
               </label>
@@ -99,12 +91,55 @@ export default async function MonteurHome() {
             >
               Ausstempeln
             </button>
+            <p className="text-xs text-silver">Pause wird automatisch nach Arbeitszeitgesetz abgezogen.</p>
           </form>
         ) : (
-          <form action={clockIn.bind(null, null)}>
+          <form action={clockIn.bind(null, null)} className="flex max-w-sm flex-col gap-3">
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="customer_id">
+                Kunde
+              </label>
+              <select
+                id="customer_id"
+                name="customer_id"
+                defaultValue=""
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              >
+                <option value="">– Auswählen (optional) –</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="note">
+                Baustelle
+              </label>
+              <input
+                id="note"
+                name="note"
+                placeholder="z.B. Münster, Musterstraße 1"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="km_driven">
+                Gefahrene km
+              </label>
+              <input
+                id="km_driven"
+                name="km_driven"
+                type="number"
+                min={0}
+                step="0.1"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
             <button
               type="submit"
-              className="rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
             >
               Einstempeln
             </button>

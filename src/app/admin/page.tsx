@@ -14,6 +14,7 @@ import {
 import { setDeadlineDone } from "@/actions/deadlines";
 import { setCalendarEntryDone } from "@/actions/calendar";
 import { DeadlineCheckbox } from "@/components/deadline-checkbox";
+import { closeExpiredTimeEntries } from "@/lib/worktime";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("de-DE", { dateStyle: "medium" });
@@ -78,6 +79,7 @@ export default async function AdminDashboard() {
   // kamen nie zurück, nacheinander funktioniert zuverlässig). Das Wetter
   // hat zusätzlich einen eigenen Timeout (lib/weather.ts).
   const weather = await fetchNordwaldeWeather();
+  await closeExpiredTimeEntries();
   const vehicleRows = await sql`SELECT id, license_plate, vehicle_type, last_tuv, tire_type FROM vehicles ORDER BY license_plate ASC`;
   const upcomingCalendarRows = showWeekPreview
     ? await sql`SELECT id, date, title, note FROM calendar_entries WHERE done = false AND date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC`
@@ -94,10 +96,12 @@ export default async function AdminDashboard() {
       ORDER BY a.start_time ASC NULLS LAST, u.name ASC
     `;
   const clockedIn = await sql`
-      SELECT t.id, u.name AS user_name, p.id AS project_id, p.title AS project_title, t.started_at
+      SELECT t.id, u.name AS user_name, p.id AS project_id, p.title AS project_title, t.started_at,
+             c.name AS customer_name
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
       LEFT JOIN projects p ON p.id = t.project_id
+      LEFT JOIN customers c ON c.id = t.customer_id
       WHERE t.ended_at IS NULL
       ORDER BY t.started_at ASC
     `;
@@ -193,6 +197,7 @@ export default async function AdminDashboard() {
     project_id: number | null;
     project_title: string | null;
     started_at: unknown;
+    customer_name: string | null;
   }>;
 
   const activity: ActivityEvent[] = [
@@ -520,7 +525,7 @@ export default async function AdminDashboard() {
                         {entry.project_title}
                       </Link>
                     ) : (
-                      "Allgemein"
+                      entry.customer_name ?? "Allgemein"
                     )}{" "}
                     · seit {toTimeSinceLabel(entry.started_at)}
                   </span>

@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db";
 import { updateTimeEntry, createTimeEntry, reviewTimeEntryChange } from "@/actions/time";
 import { PrintButton } from "@/components/print-button";
+import { closeExpiredTimeEntries } from "@/lib/worktime";
 
 function toDateTimeLabel(value: unknown): string {
   if (!value) return "";
@@ -30,18 +31,22 @@ function toDateTimeLabelSafe(value: unknown): string {
 }
 
 export default async function AdminTimePage() {
-  const [entries, employees, projects, changeRequests] = await Promise.all([
+  await closeExpiredTimeEntries();
+
+  const [entries, employees, projects, customers, changeRequests] = await Promise.all([
     sql`
-      SELECT t.id, t.started_at, t.ended_at, t.break_minutes, t.note, t.edited_by_admin,
-             u.name AS user_name, p.title AS project_title
+      SELECT t.id, t.started_at, t.ended_at, t.break_minutes, t.note, t.km_driven, t.edited_by_admin,
+             u.name AS user_name, p.title AS project_title, c.name AS customer_name
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
       LEFT JOIN projects p ON p.id = t.project_id
+      LEFT JOIN customers c ON c.id = t.customer_id
       ORDER BY t.started_at DESC
       LIMIT 200
     `,
     sql`SELECT id, name FROM users WHERE active = true ORDER BY name ASC`,
     sql`SELECT id, title FROM projects ORDER BY title ASC`,
+    sql`SELECT id, name FROM customers ORDER BY name ASC`,
     sql`
       SELECT r.id, r.requested_ended_at, r.requested_break_minutes, r.requested_note, r.reason,
              r.created_at, u.name AS user_name, p.title AS project_title,
@@ -62,12 +67,15 @@ export default async function AdminTimePage() {
     ended_at: unknown;
     break_minutes: number;
     note: string | null;
+    km_driven: number | null;
     edited_by_admin: boolean;
     user_name: string;
     project_title: string | null;
+    customer_name: string | null;
   }>;
   const employeeList = employees as unknown as Array<{ id: number; name: string }>;
   const projectList = projects as unknown as Array<{ id: number; title: string }>;
+  const customerList = customers as unknown as Array<{ id: number; name: string }>;
   const pendingRequests = changeRequests as unknown as Array<{
     id: number;
     requested_ended_at: unknown;
@@ -175,6 +183,23 @@ export default async function AdminTimePage() {
                 ))}
               </select>
             </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-sm text-silver" htmlFor="customer_id">
+                Kunde
+              </label>
+              <select
+                id="customer_id"
+                name="customer_id"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              >
+                <option value="">– Auswählen (optional) –</option>
+                {customerList.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex gap-3">
@@ -226,6 +251,19 @@ export default async function AdminTimePage() {
                 className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
               />
             </div>
+            <div className="w-24">
+              <label className="mb-1 block text-sm text-silver" htmlFor="km_driven">
+                Km
+              </label>
+              <input
+                id="km_driven"
+                name="km_driven"
+                type="number"
+                min={0}
+                step="0.1"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
           </div>
 
           <div>
@@ -256,11 +294,12 @@ export default async function AdminTimePage() {
             <thead className="border-b border-border text-silver">
               <tr>
                 <th className="px-4 py-3 font-medium">Mitarbeiter</th>
-                <th className="px-4 py-3 font-medium">Auftrag</th>
+                <th className="px-4 py-3 font-medium">Auftrag / Kunde</th>
                 <th className="px-4 py-3 font-medium">Beginn</th>
                 <th className="px-4 py-3 font-medium">Dauer</th>
                 <th className="px-4 py-3 font-medium">Ende</th>
                 <th className="px-4 py-3 font-medium">Pause (min)</th>
+                <th className="px-4 py-3 font-medium">Km</th>
                 <th className="px-4 py-3 font-medium">Notiz</th>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
@@ -269,7 +308,9 @@ export default async function AdminTimePage() {
               {timeEntries.map((entry) => (
                 <tr key={entry.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 text-silver-light">{entry.user_name}</td>
-                  <td className="px-4 py-3 text-silver-light">{entry.project_title ?? "Allgemein"}</td>
+                  <td className="px-4 py-3 text-silver-light">
+                    {entry.project_title ?? entry.customer_name ?? "Allgemein"}
+                  </td>
                   <td className="px-4 py-3 text-silver">{toDateTimeLabel(entry.started_at)}</td>
                   <td className="px-4 py-3 text-silver">
                     {durationLabel(entry.started_at, entry.ended_at, entry.break_minutes)}
@@ -299,6 +340,18 @@ export default async function AdminTimePage() {
                       className="print:hidden w-16 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
                     />
                     <span className="hidden text-silver print:inline">{entry.break_minutes}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      form={`edit-${entry.id}`}
+                      name="km_driven"
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      defaultValue={entry.km_driven ?? ""}
+                      className="print:hidden w-16 rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-copper"
+                    />
+                    <span className="hidden text-silver print:inline">{entry.km_driven ?? "–"}</span>
                   </td>
                   <td className="px-4 py-3">
                     <input

@@ -6,14 +6,18 @@ export default async function NewOwnTimeEntryPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const projectRows = await sql`
-    SELECT DISTINCT p.id, p.title
-    FROM assignments a
-    JOIN projects p ON p.id = a.project_id
-    WHERE a.user_id = ${user.userId}
-    ORDER BY p.title ASC
-  `;
+  const [projectRows, customerRows] = await Promise.all([
+    sql`
+      SELECT DISTINCT p.id, p.title
+      FROM assignments a
+      JOIN projects p ON p.id = a.project_id
+      WHERE a.user_id = ${user.userId}
+      ORDER BY p.title ASC
+    `,
+    sql`SELECT id, name FROM customers ORDER BY name ASC`,
+  ]);
   const projects = projectRows as unknown as Array<{ id: number; title: string }>;
+  const customers = customerRows as unknown as Array<{ id: number; name: string }>;
 
   return (
     <div className="flex flex-1 flex-col px-6 py-6">
@@ -32,6 +36,24 @@ export default async function NewOwnTimeEntryPage() {
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm text-silver" htmlFor="customer_id">
+            Kunde
+          </label>
+          <select
+            id="customer_id"
+            name="customer_id"
+            className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+          >
+            <option value="">– Auswählen (optional) –</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name}
               </option>
             ))}
           </select>
@@ -75,19 +97,20 @@ export default async function NewOwnTimeEntryPage() {
             />
           </div>
           <div className="w-28">
-            <label className="mb-1 block text-sm text-silver" htmlFor="break_minutes">
-              Pause (min)
+            <label className="mb-1 block text-sm text-silver" htmlFor="km_driven">
+              Km
             </label>
             <input
-              id="break_minutes"
-              name="break_minutes"
+              id="km_driven"
+              name="km_driven"
               type="number"
               min={0}
-              defaultValue={0}
+              step="0.1"
               className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
             />
           </div>
         </div>
+        <p className="text-xs text-silver">Pause wird automatisch nach Arbeitszeitgesetz berechnet (ab 6h: 30 min, ab 9h: 45 min).</p>
 
         <div>
           <label className="mb-1 block text-sm text-silver" htmlFor="note">
