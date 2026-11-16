@@ -73,27 +73,18 @@ export default async function AdminDashboard() {
   weekToDate.setDate(weekToDate.getDate() + 6);
   const weekTo = weekToDate.toISOString().slice(0, 10);
 
-  const [
-    weather,
-    vehicleRows,
-    upcomingCalendarRows,
-    nextCalendarEntryRows,
-    completedDeadlineRows,
-    todaysAssignments,
-    clockedIn,
-    recentTime,
-    recentService,
-    recentMaterial,
-    recentDocs,
-  ] = await Promise.all([
-      fetchNordwaldeWeather(),
-      sql`SELECT id, license_plate, vehicle_type, last_tuv, tire_type FROM vehicles ORDER BY license_plate ASC`,
-      showWeekPreview
-        ? sql`SELECT id, date, title, note FROM calendar_entries WHERE done = false AND date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC`
-        : Promise.resolve([]),
-      sql`SELECT id, date, title, note FROM calendar_entries WHERE done = false AND date >= CURRENT_DATE ORDER BY date ASC LIMIT 5`,
-      sql`SELECT type, due_date FROM completed_deadlines WHERE type IN ('lohn', 'ust')`,
-      sql`
+  // Nacheinander statt parallel: zu viele gleichzeitige Verbindungen lassen
+  // den Supabase-Pooler hängen (siehe /api/backup - 13 parallele Queries
+  // kamen nie zurück, nacheinander funktioniert zuverlässig). Das Wetter
+  // hat zusätzlich einen eigenen Timeout (lib/weather.ts).
+  const weather = await fetchNordwaldeWeather();
+  const vehicleRows = await sql`SELECT id, license_plate, vehicle_type, last_tuv, tire_type FROM vehicles ORDER BY license_plate ASC`;
+  const upcomingCalendarRows = showWeekPreview
+    ? await sql`SELECT id, date, title, note FROM calendar_entries WHERE done = false AND date >= ${weekFrom} AND date <= ${weekTo} ORDER BY date ASC`
+    : [];
+  const nextCalendarEntryRows = await sql`SELECT id, date, title, note FROM calendar_entries WHERE done = false AND date >= CURRENT_DATE ORDER BY date ASC LIMIT 5`;
+  const completedDeadlineRows = await sql`SELECT type, due_date FROM completed_deadlines WHERE type IN ('lohn', 'ust')`;
+  const todaysAssignments = await sql`
       SELECT a.id, u.name AS user_name, p.id AS project_id, p.title AS project_title,
              a.start_time, a.end_time, a.note
       FROM assignments a
@@ -101,48 +92,47 @@ export default async function AdminDashboard() {
       JOIN projects p ON p.id = a.project_id
       WHERE a.date = CURRENT_DATE
       ORDER BY a.start_time ASC NULLS LAST, u.name ASC
-    `,
-      sql`
+    `;
+  const clockedIn = await sql`
       SELECT t.id, u.name AS user_name, p.id AS project_id, p.title AS project_title, t.started_at
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
       LEFT JOIN projects p ON p.id = t.project_id
       WHERE t.ended_at IS NULL
       ORDER BY t.started_at ASC
-    `,
-      sql`
+    `;
+  const recentTime = await sql`
       SELECT t.id, t.started_at, u.name AS user_name, p.id AS project_id, p.title AS project_title
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
       LEFT JOIN projects p ON p.id = t.project_id
       ORDER BY t.started_at DESC
       LIMIT 20
-    `,
-      sql`
+    `;
+  const recentService = await sql`
       SELECT s.id, s.description, s.created_at, u.name AS user_name, p.id AS project_id, p.title AS project_title
       FROM service_entries s
       JOIN users u ON u.id = s.user_id
       JOIN projects p ON p.id = s.project_id
       ORDER BY s.created_at DESC
       LIMIT 20
-    `,
-      sql`
+    `;
+  const recentMaterial = await sql`
       SELECT m.id, m.description, m.created_at, u.name AS user_name, p.id AS project_id, p.title AS project_title
       FROM material_entries m
       JOIN users u ON u.id = m.user_id
       JOIN projects p ON p.id = m.project_id
       ORDER BY m.created_at DESC
       LIMIT 20
-    `,
-      sql`
+    `;
+  const recentDocs = await sql`
       SELECT d.id, d.type, d.created_at, u.name AS user_name, p.id AS project_id, p.title AS project_title
       FROM doc_entries d
       JOIN users u ON u.id = d.user_id
       JOIN projects p ON p.id = d.project_id
       ORDER BY d.created_at DESC
       LIMIT 20
-    `,
-    ]);
+    `;
 
   const vehicles = vehicleRows as unknown as Array<{
     id: number;
