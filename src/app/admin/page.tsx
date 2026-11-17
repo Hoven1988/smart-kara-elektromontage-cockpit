@@ -1,7 +1,5 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { clockIn, clockOut } from "@/actions/time";
 import { fetchNordwaldeWeather } from "@/lib/weather";
 import {
   getNextUstVaDeadline,
@@ -60,9 +58,6 @@ type ActivityEvent = {
 };
 
 export default async function AdminDashboard() {
-  const user = await getCurrentUser();
-  if (!user) return null;
-
   const now = new Date();
   const today = now.toLocaleDateString("de-DE", {
     weekday: "long",
@@ -101,7 +96,7 @@ export default async function AdminDashboard() {
       ORDER BY a.start_time ASC NULLS LAST, u.name ASC
     `;
   const clockedIn = await sql`
-      SELECT t.id, t.user_id, u.name AS user_name, p.id AS project_id, p.title AS project_title, t.started_at,
+      SELECT t.id, u.name AS user_name, p.id AS project_id, p.title AS project_title, t.started_at,
              c.name AS customer_name
       FROM time_entries t
       JOIN users u ON u.id = t.user_id
@@ -110,7 +105,6 @@ export default async function AdminDashboard() {
       WHERE t.ended_at IS NULL
       ORDER BY t.started_at ASC
     `;
-  const customerRows = await sql`SELECT id, name FROM customers ORDER BY name ASC`;
   const recentTime = await sql`
       SELECT t.id, t.started_at, u.name AS user_name, p.id AS project_id, p.title AS project_title
       FROM time_entries t
@@ -199,15 +193,12 @@ export default async function AdminDashboard() {
 
   const active = clockedIn as unknown as Array<{
     id: number;
-    user_id: number;
     user_name: string;
     project_id: number | null;
     project_title: string | null;
     started_at: unknown;
     customer_name: string | null;
   }>;
-  const myOpenEntry = active.find((entry) => entry.user_id === user.userId) ?? null;
-  const customers = customerRows as unknown as Array<{ id: number; name: string }>;
 
   const activity: ActivityEvent[] = [
     ...(
@@ -333,89 +324,6 @@ export default async function AdminDashboard() {
           </>
         )}
       </p>
-
-      <div className="mb-10 max-w-sm">
-        <h2 className="mb-3 text-lg font-semibold text-silver-light">Meine Arbeitszeit</h2>
-        {myOpenEntry ? (
-          <form action={clockOut.bind(null, myOpenEntry.project_id)} className="flex flex-col gap-3">
-            <p className="text-sm text-silver">
-              Eingestempelt seit {toDateTimeLabel(myOpenEntry.started_at)}
-              {" · "}
-              {myOpenEntry.project_id
-                ? myOpenEntry.project_title
-                : myOpenEntry.customer_name ?? "Allgemein"}
-            </p>
-            <div>
-              <label className="mb-1 block text-sm text-silver" htmlFor="admin-clockout-note">
-                Notiz
-              </label>
-              <input
-                id="admin-clockout-note"
-                name="note"
-                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-              />
-            </div>
-            <button
-              type="submit"
-              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
-            >
-              Ausstempeln
-            </button>
-            <p className="text-xs text-silver">Pause wird automatisch nach Arbeitszeitgesetz abgezogen.</p>
-          </form>
-        ) : (
-          <form action={clockIn.bind(null, null)} className="flex flex-col gap-3">
-            <div>
-              <label className="mb-1 block text-sm text-silver" htmlFor="admin-clockin-customer">
-                Kunde
-              </label>
-              <select
-                id="admin-clockin-customer"
-                name="customer_id"
-                defaultValue=""
-                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-              >
-                <option value="">– Auswählen (optional) –</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-silver" htmlFor="admin-clockin-note">
-                Baustelle
-              </label>
-              <input
-                id="admin-clockin-note"
-                name="note"
-                placeholder="z.B. Münster, Musterstraße 1"
-                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-silver" htmlFor="admin-clockin-km">
-                Gefahrene km
-              </label>
-              <input
-                id="admin-clockin-km"
-                name="km_driven"
-                type="number"
-                min={0}
-                step="0.1"
-                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
-              />
-            </div>
-            <button
-              type="submit"
-              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
-            >
-              Einstempeln
-            </button>
-          </form>
-        )}
-      </div>
 
       {(() => {
         const nextTerminDate = nextTermin

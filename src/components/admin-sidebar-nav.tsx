@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { LogoutButton } from "@/components/logout-button";
 
 const PERSONAL_ITEMS = [
+  { href: "/admin/arbeitszeit", label: "Meine Arbeitszeit" },
   { href: "/admin/planung", label: "Einsatzplanung" },
   { href: "/admin/zeiten", label: "Zeiten" },
   { href: "/admin/urlaub", label: "Urlaub" },
