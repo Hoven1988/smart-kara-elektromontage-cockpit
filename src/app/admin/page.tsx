@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { clockIn, clockOut } from "@/actions/time";
+import { LiveClock } from "@/components/live-clock";
 import { fetchNordwaldeWeather } from "@/lib/weather";
 import {
   getNextUstVaDeadline,
@@ -58,6 +61,9 @@ type ActivityEvent = {
 };
 
 export default async function AdminDashboard() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
   const now = new Date();
   const today = now.toLocaleDateString("de-DE", {
     weekday: "long",
@@ -105,6 +111,14 @@ export default async function AdminDashboard() {
       WHERE t.ended_at IS NULL
       ORDER BY t.started_at ASC
     `;
+  const myOpenEntryRows = await sql`
+      SELECT t.started_at, t.project_id, p.title AS project_title, c.name AS customer_name
+      FROM time_entries t
+      LEFT JOIN projects p ON p.id = t.project_id
+      LEFT JOIN customers c ON c.id = t.customer_id
+      WHERE t.user_id = ${user.userId} AND t.ended_at IS NULL
+    `;
+  const customerRows = await sql`SELECT id, name FROM customers ORDER BY name ASC`;
   const recentTime = await sql`
       SELECT t.id, t.started_at, u.name AS user_name, p.id AS project_id, p.title AS project_title
       FROM time_entries t
@@ -199,6 +213,15 @@ export default async function AdminDashboard() {
     started_at: unknown;
     customer_name: string | null;
   }>;
+  const myOpenEntry = (
+    myOpenEntryRows as unknown as Array<{
+      started_at: unknown;
+      project_id: number | null;
+      project_title: string | null;
+      customer_name: string | null;
+    }>
+  )[0];
+  const customers = customerRows as unknown as Array<{ id: number; name: string }>;
 
   const activity: ActivityEvent[] = [
     ...(
@@ -324,6 +347,100 @@ export default async function AdminDashboard() {
           </>
         )}
       </p>
+
+      <div className="mb-10 max-w-sm">
+        <h2 className="mb-3 text-lg font-semibold text-silver-light">Meine Arbeitszeit</h2>
+        {myOpenEntry ? (
+          <form action={clockOut.bind(null, myOpenEntry.project_id)} className="flex flex-col gap-3">
+            <p className="text-2xl font-semibold text-copper-light">
+              <LiveClock
+                startedAt={(myOpenEntry.started_at instanceof Date
+                  ? myOpenEntry.started_at
+                  : new Date(String(myOpenEntry.started_at))
+                ).toISOString()}
+              />
+            </p>
+            <p className="text-sm text-silver">
+              Eingestempelt seit {toDateTimeLabel(myOpenEntry.started_at)}
+              {" · "}
+              {myOpenEntry.project_id
+                ? myOpenEntry.project_title
+                : myOpenEntry.customer_name ?? "Allgemein"}
+            </p>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="admin-cockpit-clockout-note">
+                Notiz
+              </label>
+              <input
+                id="admin-cockpit-clockout-note"
+                name="note"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <button
+              type="submit"
+              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+            >
+              Ausstempeln
+            </button>
+            <p className="text-xs text-silver">
+              Pause wird automatisch nach Arbeitszeitgesetz abgezogen. Als Chef gilt für dich keine
+              Höchstarbeitszeit von 10 Stunden.
+            </p>
+          </form>
+        ) : (
+          <form action={clockIn.bind(null, null)} className="flex flex-col gap-3">
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="admin-cockpit-customer">
+                Kunde
+              </label>
+              <select
+                id="admin-cockpit-customer"
+                name="customer_id"
+                defaultValue=""
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              >
+                <option value="">– Auswählen (optional) –</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="admin-cockpit-note">
+                Baustelle
+              </label>
+              <input
+                id="admin-cockpit-note"
+                name="note"
+                placeholder="z.B. Münster, Musterstraße 1"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-silver" htmlFor="admin-cockpit-km">
+                Gefahrene km
+              </label>
+              <input
+                id="admin-cockpit-km"
+                name="km_driven"
+                type="number"
+                min={0}
+                step="0.1"
+                className="w-full rounded border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-copper"
+              />
+            </div>
+            <button
+              type="submit"
+              className="self-start rounded bg-copper px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-copper-light"
+            >
+              Einstempeln
+            </button>
+          </form>
+        )}
+      </div>
 
       {(() => {
         const nextTerminDate = nextTermin

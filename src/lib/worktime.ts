@@ -14,11 +14,16 @@ export const MAX_WORK_HOURS = 10;
  * Schließt Zeiteinträge, die seit mehr als MAX_WORK_HOURS offen sind, automatisch
  * (z.B. vergessenes Ausstempeln). Läuft serverlos ohne eigenen Hintergrundjob,
  * daher wird hier bei jedem relevanten Seitenaufruf nachgeholt statt per Cron.
+ *
+ * Gilt nicht für Admins: Die ArbZG-Höchstarbeitszeit betrifft Arbeitnehmer,
+ * nicht den Unternehmer selbst.
  */
 export async function closeExpiredTimeEntries(): Promise<void> {
   await sql`
-    UPDATE time_entries
-    SET ended_at = started_at + interval '10 hours', break_minutes = 45
-    WHERE ended_at IS NULL AND started_at <= now() - interval '10 hours'
+    UPDATE time_entries t
+    SET ended_at = t.started_at + interval '10 hours', break_minutes = 45
+    FROM users u
+    WHERE u.id = t.user_id AND u.role <> 'admin'
+      AND t.ended_at IS NULL AND t.started_at <= now() - interval '10 hours'
   `;
 }
